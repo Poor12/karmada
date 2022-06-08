@@ -4,11 +4,11 @@ on:
   push:
   pull_request:
     paths:
-      - "charts/**"
+      - "charts"
 
 jobs:
   lint-test:
-    if: github.repository == 'karmada-io/karmada'
+    if: github.repository == 'Poor12/karmada'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,13 +37,13 @@ jobs:
             echo "::set-output name=changed::true"
           fi
       - name: Run chart-testing (lint)
-        run: ct lint --check-version-increment=false
+        run: ct lint --check-version-increment=false --charts charts
 
       - name: Create Kind cluster
         uses: helm/kind-action@v1.2.0
         with:
           wait: 120s
-        if: steps.list-changed.outputs.changed == 'true'
+#        if: steps.list-changed.outputs.changed == 'true'
 
       - name: Run chart-testing (install)
-        run: ct install
+        run: ct install --charts charts
