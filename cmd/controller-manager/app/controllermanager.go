@@ -236,6 +236,8 @@ func startClusterStatusController(ctx controllerscontext.Context) (enabled bool,
 		ClusterFailureThreshold:           opts.ClusterFailureThreshold,
 		ClusterCacheSyncTimeout:           opts.ClusterCacheSyncTimeout,
 		RateLimiterOptions:                ctx.Opts.RateLimiterOptions,
+		ClusterNodeSummaryMap:             *status.NewClusterNodeSummaryMap(),
+		ClusterPodSummaryMap:              *status.NewClusterPodSummaryMap(),
 	}
 	if err := clusterStatusController.SetupWithManager(mgr); err != nil {
 		return false, err

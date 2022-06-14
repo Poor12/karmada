@@ -72,6 +72,37 @@ func (r *Resource) Add(rl corev1.ResourceList) {
 	}
 }
 
+// AddResource is used to add two resources.
+func (r *Resource) AddResource(r1 *Resource) {
+	if r == nil {
+		return
+	}
+
+	//for rName, rQuant := range r1 {
+	//	switch rName {
+	//	case corev1.ResourceCPU:
+	//		r.MilliCPU += rQuant.MilliValue()
+	//	case corev1.ResourceMemory:
+	//		r.Memory += rQuant.Value()
+	//	case corev1.ResourcePods:
+	//		r.AllowedPodNumber += rQuant.Value()
+	//	case corev1.ResourceEphemeralStorage:
+	//		r.EphemeralStorage += rQuant.Value()
+	//	default:
+	//		if lifted.IsScalarResourceName(rName) {
+	//			r.AddScalar(rName, rQuant.Value())
+	//		}
+	//	}
+	//}
+	r.MilliCPU += r1.MilliCPU
+	r.Memory += r1.Memory
+	r.AllowedPodNumber += r1.AllowedPodNumber
+	r.EphemeralStorage += r1.EphemeralStorage
+	for name, quantity := range r1.ScalarResources {
+		r.AddScalar(name, quantity)
+	}
+}
+
 // Sub is used to subtract two resources.
 // Return error when the minuend is less than the subtrahend.
 func (r *Resource) Sub(rl corev1.ResourceList) error {

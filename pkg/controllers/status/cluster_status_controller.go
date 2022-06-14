@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"sort"
 	"strings"
@@ -85,6 +86,9 @@ type ClusterStatusController struct {
 
 	ClusterCacheSyncTimeout metav1.Duration
 	RateLimiterOptions      ratelimiterflag.Options
+
+	ClusterNodeSummaryMap clusterNodeSummaryMap
+	ClusterPodSummaryMap  clusterPodSummaryMap
 }
 
 // Reconcile syncs status of the given member cluster.
@@ -175,20 +179,27 @@ func (c *ClusterStatusController) syncClusterStatus(cluster *clusterv1alpha1.Clu
 			klog.Warningf("Maybe get partial(%d) APIs installed in Cluster %s. Error: %v.", len(apiEnables), cluster.GetName(), err)
 		}
 
-		nodes, err := listNodes(clusterInformerManager)
-		if err != nil {
-			klog.Errorf("Failed to list nodes for Cluster %s. Error: %v.", cluster.GetName(), err)
-		}
+		//nodes, err := listNodes(clusterInformerManager)
+		//if err != nil {
+		//	klog.Errorf("Failed to list nodes for Cluster %s. Error: %v.", cluster.GetName(), err)
+		//}
+		//
+		//pods, err := listPods(clusterInformerManager)
+		//if err != nil {
+		//	klog.Errorf("Failed to list pods for Cluster %s. Error: %v.", cluster.GetName(), err)
+		//}
+		nodeSummary, clusterAllocatable := c.ClusterNodeSummaryMap.getNodeSummary(cluster.Name)
+		allocatingResource, allocatedResource := c.ClusterPodSummaryMap.getPodSummary(cluster.Name)
 
-		pods, err := listPods(clusterInformerManager)
-		if err != nil {
-			klog.Errorf("Failed to list pods for Cluster %s. Error: %v.", cluster.GetName(), err)
+		resourceSummary := &clusterv1alpha1.ResourceSummary{
+			Allocatable: clusterAllocatable,
+			Allocated:   allocatedResource,
+			Allocating:  allocatingResource,
 		}
-
 		currentClusterStatus.KubernetesVersion = clusterVersion
 		currentClusterStatus.APIEnablements = apiEnables
-		currentClusterStatus.NodeSummary = getNodeSummary(nodes)
-		currentClusterStatus.ResourceSummary = getResourceSummary(nodes, pods)
+		currentClusterStatus.NodeSummary = nodeSummary
+		currentClusterStatus.ResourceSummary = resourceSummary
 	}
 
 	setTransitionTime(currentClusterStatus.Conditions, readyCondition)
@@ -253,6 +264,12 @@ func (c *ClusterStatusController) buildInformerForCluster(cluster *clusterv1alph
 	for _, gvr := range gvrs {
 		if !singleClusterInformerManager.IsInformerSynced(gvr) {
 			allSynced = false
+			if gvr == nodeGVR {
+				singleClusterInformerManager.ForResource(nodeGVR, c.NewHandlerOnNode(cluster.Name))
+			} else {
+				singleClusterInformerManager.ForResource(podGVR, c.NewHandlerOnPod(cluster.Name))
+			}
+
 			singleClusterInformerManager.Lister(gvr)
 		}
 	}
@@ -473,6 +490,14 @@ func convertObjectsToNodes(nodeList []runtime.Object) ([]*corev1.Node, error) {
 	return nodes, nil
 }
 
+func convertObjectToNode(nodeObj runtime.Object) (*corev1.Node, error) {
+	node, err := helper.ConvertToNode(nodeObj.(*unstructured.Unstructured))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert unstructured to typed object: %v", err)
+	}
+	return node, nil
+}
+
 func convertObjectsToPods(podList []runtime.Object) ([]*corev1.Pod, error) {
 	pods := make([]*corev1.Pod, 0, len(podList))
 	for _, obj := range podList {
@@ -483,6 +508,14 @@ func convertObjectsToPods(podList []runtime.Object) ([]*corev1.Pod, error) {
 		pods = append(pods, pod)
 	}
 	return pods, nil
+}
+
+func convertObjectToPod(podObj runtime.Object) (*corev1.Pod, error) {
+	pod, err := helper.ConvertToPod(podObj.(*unstructured.Unstructured))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert unstructured to typed object: %v", err)
+	}
+	return pod, nil
 }
 
 func getClusterAllocatable(nodeList []*corev1.Node) (allocatable corev1.ResourceList) {
@@ -527,4 +560,110 @@ func getAllocatedResource(podList []*corev1.Pod) corev1.ResourceList {
 	}
 	allocated.AddResourcePods(podNum)
 	return allocated.ResourceList()
+}
+
+func (c *ClusterStatusController) NewHandlerOnNode(clusterName string) cache.ResourceEventHandler {
+	return &cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			runtimeObject, ok := obj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			node, err := convertObjectToNode(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Node(%s) add event", node.Name)
+			c.ClusterNodeSummaryMap.set(clusterName, node.UID, helper.NodeReady(node), node.Status.Allocatable)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			runtimeObject, ok := newObj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			node, err := convertObjectToNode(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Node(%s) update event", node.Name)
+			c.ClusterNodeSummaryMap.set(clusterName, node.UID, helper.NodeReady(node), node.Status.Allocatable)
+		},
+		DeleteFunc: func(obj interface{}) {
+			runtimeObject, ok := obj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			node, err := convertObjectToNode(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Node(%s) delete event", node.Name)
+			c.ClusterNodeSummaryMap.delete(clusterName, node.UID)
+		},
+	}
+}
+
+func (c *ClusterStatusController) NewHandlerOnPod(clusterName string) cache.ResourceEventHandler {
+	return &cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			runtimeObject, ok := obj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			pod, err := convertObjectToPod(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Pod(%s/%s) add event", pod.Namespace, pod.Name)
+			c.ClusterPodSummaryMap.set(clusterName, pod.UID, pod)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			runtimeObject, ok := newObj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			pod, err := convertObjectToPod(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Pod(%s/%s) add event", pod.Namespace, pod.Name)
+			c.ClusterPodSummaryMap.set(clusterName, pod.UID, pod)
+		},
+		DeleteFunc: func(obj interface{}) {
+			runtimeObject, ok := obj.(runtime.Object)
+			if !ok {
+				klog.Errorf("Invalid object")
+				return
+			}
+
+			pod, err := convertObjectToPod(runtimeObject)
+			if err != nil {
+				klog.Error(err)
+				return
+			}
+
+			klog.V(2).Infof("Watch Pod(%s/%s) add event", pod.Namespace, pod.Name)
+			c.ClusterPodSummaryMap.delete(clusterName, pod.UID)
+		},
+	}
 }
