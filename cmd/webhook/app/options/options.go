@@ -44,6 +44,11 @@ type Options struct {
 	// for serving health probes
 	// Defaults to ":8000".
 	HealthProbeBindAddress string
+	// EnableProfile is the flag about whether to enable pprof profiling.
+	EnableProfile bool
+	// ProfilePort is the port for pprof profiling.
+	// Defaults to 6060 if unspecified.
+	ProfilePort int
 }
 
 // NewOptions builds an empty options.
@@ -68,4 +73,6 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&o.KubeAPIBurst, "kube-api-burst", 60, "Burst to use while talking with karmada-apiserver. Doesn't cover events and node heartbeat apis which rate limiting is controlled by a different set of flags.")
 	flags.StringVar(&o.MetricsBindAddress, "metrics-bind-address", ":8080", "The TCP address that the controller should bind to for serving prometheus metrics(e.g. 127.0.0.1:8088, :8088)")
 	flags.StringVar(&o.HealthProbeBindAddress, "health-probe-bind-address", ":8000", "The TCP address that the controller should bind to for serving health probes(e.g. 127.0.0.1:8000, :8000)")
+	flags.BoolVar(&o.EnableProfile, "enable-pprof", false, "The flag about whether to enable pprof profiling.")
+	flags.IntVar(&o.ProfilePort, "pprof-port", 6060, "The port for pprof profiling.")
 }

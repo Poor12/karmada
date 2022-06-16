@@ -4,6 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof" // #nosec
+	"os"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -101,6 +104,18 @@ func init() {
 
 func run(ctx context.Context, karmadaConfig karmadactl.KarmadaConfig, opts *options.Options) error {
 	klog.Infof("karmada-agent version: %s", version.Get())
+
+	if opts.EnableProfile {
+		addr := fmt.Sprintf(":%d", opts.ProfilePort)
+		klog.Infof("Starting profiling on port %s", opts.ProfilePort)
+		go func() {
+			if err := http.ListenAndServe(addr, nil); err != nil {
+				klog.Errorf("Failed to enable profiling: %v", err)
+				os.Exit(1)
+			}
+		}()
+	}
+
 	controlPlaneRestConfig, err := karmadaConfig.GetRestConfig(opts.KarmadaContext, opts.KarmadaKubeConfig)
 	if err != nil {
 		return fmt.Errorf("error building kubeconfig of karmada control plane: %w", err)

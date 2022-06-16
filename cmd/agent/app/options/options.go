@@ -69,6 +69,11 @@ type Options struct {
 	// It can be set to "0" to disable the metrics serving.
 	// Defaults to ":8080".
 	MetricsBindAddress string
+	// EnableProfile is the flag about whether to enable pprof profiling.
+	EnableProfile bool
+	// ProfilePort is the port for pprof profiling.
+	// Defaults to 6060 if unspecified.
+	ProfilePort int
 
 	RateLimiterOpts ratelimiterflag.Options
 }
@@ -117,5 +122,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet, allControllers []string) {
 	fs.IntVar(&o.ConcurrentClusterSyncs, "concurrent-cluster-syncs", 5, "The number of Clusters that are allowed to sync concurrently.")
 	fs.IntVar(&o.ConcurrentWorkSyncs, "concurrent-work-syncs", 5, "The number of Works that are allowed to sync concurrently.")
 	fs.StringVar(&o.MetricsBindAddress, "metrics-bind-address", ":8080", "The TCP address that the controller should bind to for serving prometheus metrics(e.g. 127.0.0.1:8088, :8088)")
+	fs.BoolVar(&o.EnableProfile, "enable-pprof", false, "The flag about whether to enable pprof profiling.")
+	fs.IntVar(&o.ProfilePort, "pprof-port", 6060, "The port for pprof profiling.")
 	o.RateLimiterOpts.AddFlags(fs)
 }

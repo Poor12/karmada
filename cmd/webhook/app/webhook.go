@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof" // #nosec
+	"os"
 
 	"github.com/spf13/cobra"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -79,6 +81,18 @@ func NewWebhookCommand(ctx context.Context) *cobra.Command {
 // Run runs the webhook server with options. This should never exit.
 func Run(ctx context.Context, opts *options.Options) error {
 	klog.Infof("karmada-webhook version: %s", version.Get())
+
+	if opts.EnableProfile {
+		addr := fmt.Sprintf(":%d", opts.ProfilePort)
+		klog.Infof("Starting profiling on port %s", opts.ProfilePort)
+		go func() {
+			if err := http.ListenAndServe(addr, nil); err != nil {
+				klog.Errorf("Failed to enable profiling: %v", err)
+				os.Exit(1)
+			}
+		}()
+	}
+
 	config, err := controllerruntime.GetConfig()
 	if err != nil {
 		panic(err)

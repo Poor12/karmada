@@ -102,6 +102,11 @@ type Options struct {
 	ConcurrentNamespaceSyncs int
 	// ConcurrentResourceTemplateSyncs is the number of resource templates that are allowed to sync concurrently.
 	ConcurrentResourceTemplateSyncs int
+	// EnableProfile is the flag about whether to enable pprof profiling.
+	EnableProfile bool
+	// ProfilePort is the port for pprof profiling.
+	// Defaults to 6060 if unspecified.
+	ProfilePort int
 
 	RateLimiterOpts ratelimiterflag.Options
 }
@@ -166,6 +171,8 @@ func (o *Options) AddFlags(flags *pflag.FlagSet, allControllers, disabledByDefau
 	flags.IntVar(&o.ConcurrentWorkSyncs, "concurrent-work-syncs", 5, "The number of Works that are allowed to sync concurrently.")
 	flags.IntVar(&o.ConcurrentNamespaceSyncs, "concurrent-namespace-syncs", 1, "The number of Namespaces that are allowed to sync concurrently.")
 	flags.IntVar(&o.ConcurrentResourceTemplateSyncs, "concurrent-resource-template-syncs", 5, "The number of resource templates that are allowed to sync concurrently.")
+	flags.BoolVar(&o.EnableProfile, "enable-pprof", false, "The flag about whether to enable pprof profiling.")
+	flags.IntVar(&o.ProfilePort, "pprof-port", 6060, "The port for pprof profiling.")
 
 	o.RateLimiterOpts.AddFlags(flags)
 	features.FeatureGate.AddFlag(flags)
