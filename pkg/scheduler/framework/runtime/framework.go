@@ -11,6 +11,7 @@ import (
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
+	"github.com/karmada-io/karmada/pkg/util/lifted"
 	utilmetrics "github.com/karmada-io/karmada/pkg/util/metrics"
 )
 
@@ -28,12 +29,14 @@ type frameworkImpl struct {
 	scorePlugins          []framework.ScorePlugin
 
 	metricsRecorder *metricsRecorder
+	parallelizer    lifted.Parallelizer
 }
 
 var _ framework.Framework = &frameworkImpl{}
 
 type frameworkOptions struct {
 	metricsRecorder *metricsRecorder
+	parallelizer    lifted.Parallelizer
 }
 
 // Option for the frameworkImpl.
@@ -42,6 +45,19 @@ type Option func(*frameworkOptions)
 func defaultFrameworkOptions() frameworkOptions {
 	return frameworkOptions{
 		metricsRecorder: newMetricsRecorder(1000, time.Second),
+		parallelizer:    lifted.NewParallelizer(lifted.DefaultParallelism),
+	}
+}
+
+// Parallelizer returns a parallelizer holding parallelism for scheduler.
+func (frw *frameworkImpl) Parallelizer() lifted.Parallelizer {
+	return frw.parallelizer
+}
+
+// WithParallelism sets parallelism for the scheduling frameworkImpl.
+func WithParallelism(parallelism int) Option {
+	return func(o *frameworkOptions) {
+		o.parallelizer = lifted.NewParallelizer(parallelism)
 	}
 }
 
@@ -54,6 +70,7 @@ func NewFramework(r Registry, opts ...Option) (framework.Framework, error) {
 
 	f := &frameworkImpl{
 		metricsRecorder: options.metricsRecorder,
+		parallelizer:    options.parallelizer,
 	}
 	filterPluginsList := reflect.ValueOf(&f.filterPlugins).Elem()
 	scorePluginsList := reflect.ValueOf(&f.scorePlugins).Elem()
@@ -105,36 +122,68 @@ func (frw *frameworkImpl) RunScorePlugins(ctx context.Context, placement *policy
 	}()
 	pluginToClusterScores := make(framework.PluginToClusterScores, len(frw.filterPlugins))
 	for _, p := range frw.scorePlugins {
-		var scoreList framework.ClusterScoreList
-		for _, cluster := range clusters {
+		pluginToClusterScores[p.Name()] = make(framework.ClusterScoreList, len(clusters))
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	errCh := lifted.NewErrorChannel()
+
+	// Run Score method for each cluster in parallel.
+	frw.Parallelizer().Until(ctx, len(clusters), func(index int) {
+		for _, p := range frw.scorePlugins {
+			cluster := clusters[index]
 			s, res := frw.runScorePlugin(ctx, p, placement, spec, cluster)
 			if !res.IsSuccess() {
-				return nil, framework.AsResult(fmt.Errorf("plugin %q failed with: %w", p.Name(), res.AsError()))
+				err := fmt.Errorf("plugin %q failed with: %w", p.Name(), res.AsError())
+				errCh.SendErrorWithCancel(err, cancel)
+				return
 			}
-			scoreList = append(scoreList, framework.ClusterScore{
+			pluginToClusterScores[p.Name()][index] = framework.ClusterScore{
 				Cluster: cluster,
 				Score:   s,
-			})
-		}
-
-		if p.ScoreExtensions() != nil {
-			res := frw.runScoreExtension(ctx, p, scoreList)
-			if !res.IsSuccess() {
-				return nil, framework.AsResult(fmt.Errorf("plugin %q normalizeScore failed with: %w", p.Name(), res.AsError()))
 			}
 		}
+	})
+	if err := errCh.ReceiveError(); err != nil {
+		return nil, framework.AsResult(fmt.Errorf("running Score plugins: %w", err))
+	}
 
+	// Run NormalizeScore method for each ScorePlugin in parallel.
+	frw.Parallelizer().Until(ctx, len(frw.scorePlugins), func(index int) {
+		p := frw.scorePlugins[index]
+		clusterScoreList := pluginToClusterScores[p.Name()]
+		if p.ScoreExtensions() == nil {
+			return
+		}
+		res := frw.runScoreExtension(ctx, p, clusterScoreList)
+		if !res.IsSuccess() {
+			err := fmt.Errorf("plugin %q normalizeScore failed with: %w", p.Name(), res.AsError())
+			errCh.SendErrorWithCancel(err, cancel)
+			return
+		}
+	})
+	if err := errCh.ReceiveError(); err != nil {
+		return nil, framework.AsResult(fmt.Errorf("running Normalize on Score plugins: %w", err))
+	}
+
+	// Apply score defaultWeights for each ScorePlugin in parallel.
+	frw.Parallelizer().Until(ctx, len(frw.scorePlugins), func(index int) {
+		p := frw.scorePlugins[index]
 		weight, ok := frw.scorePluginsWeightMap[p.Name()]
 		if !ok {
-			pluginToClusterScores[p.Name()] = scoreList
-			continue
+			return
 		}
-
-		for i := range scoreList {
-			scoreList[i].Score = scoreList[i].Score * int64(weight)
+		clusterScoreList := pluginToClusterScores[p.Name()]
+		for i, clusterScore := range clusterScoreList {
+			if clusterScore.Score > framework.MaxClusterScore || clusterScore.Score < framework.MinClusterScore {
+				err := fmt.Errorf("plugin %q returns an invalid score %v, it should in the range of [%v, %v] after normalizing", p.Name(), clusterScore.Score, framework.MinClusterScore, framework.MaxClusterScore)
+				errCh.SendErrorWithCancel(err, cancel)
+				return
+			}
+			clusterScoreList[i].Score = clusterScoreList[i].Score * int64(weight)
 		}
-
-		pluginToClusterScores[p.Name()] = scoreList
+	})
+	if err := errCh.ReceiveError(); err != nil {
+		return nil, framework.AsResult(fmt.Errorf("applying score defaultWeights on Score plugins: %w", err))
 	}
 
 	return pluginToClusterScores, nil
