@@ -105,11 +105,64 @@ type ClusterSpec struct {
 	// +optional
 	Taints []corev1.Taint
 
-	// The name of the each resource modeling in cluster. Each modeling name can be customized by the user.
-	// If the user does not define the modeling name and modeling quota,
-	// it will be the default name(e.g. 'model0','model1','model2','model3')
+	// The model list of resource modeling in this cluster. Each modeling name and quota can be customized by the user.
+	// If the user does not define the modeling name and modeling quota, it will be the default model.
+	// The default model index from 0 to 11. Each default model's cpu quota is (2^index-1, 2^index], index >= 0
+	// Each default model's memory quota is also (2^index-1, 2^index], index >= 0, for example, model0 is like this:
+	// - index: 0
+	// ranges:
+	//   - name: CPU
+	//     min: 0
+	//     max: 1
+	//   - name: memory
+	// 	   min: 0
+	// 	   max: 1
+	// model10 is like this:
+	// - index: 10
+	// range:
+	//   - name: CPU
+	//     min: 512
+	//     max: 1024
+	//   - name: memory
+	// 	   min: 512
+	// 	   max: 1024
+	// model11 is like this:
+	// - index: 11
+	// range:
+	//   - name: CPU
+	//     min: 1024
+	//     max: MAXINT
+	//   - name: memory
+	// 	   min: 1024
+	// 	   max: MAXINT
 	// +optional
-	ModelingName []string
+	ResourceModels []resourceModel
+}
+
+// ResourceModel describes the modeling that you want to statistics.
+type ResourceModel struct {
+	// Index is the index for the resource modeling.
+	// +optional
+	Index int
+
+	// Ranges describes the resource quota ranges.
+	// +optional
+	Ranges []ResourceModelItem
+}
+
+// ResourceModelItem describes the detail of each modeling quota that ranges from min to max.
+type ResourceModelItem struct {
+	// Name is the name for the resource that you want to categorize.
+	// +optional
+	Name string
+
+	// Min is the minimum amount of this resource represented by resource name。
+	// +optional
+	Min uint64
+
+	// Max is the maximum amount of this resource represented by resource name。
+	// +optional
+	Max uint64
 }
 
 const (
