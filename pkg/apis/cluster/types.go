@@ -2,6 +2,7 @@ package cluster
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -112,31 +113,31 @@ type ClusterSpec struct {
 	// - index: 0
 	// ranges:
 	//   - name: CPU
-	//     min: 0
-	//     max: 1
+	//     min: 0 C
+	//     max: 1 C
 	//   - name: memory
-	// 	   min: 0
-	// 	   max: 1
+	//     min: 0 GB
+	//     max: 1 GB
 	// model10 is like this:
 	// - index: 10
 	// range:
 	//   - name: CPU
-	//     min: 512
-	//     max: 1024
+	//     min: 512 C
+	//     max: 1024 C
 	//   - name: memory
-	// 	   min: 512
-	// 	   max: 1024
+	//     min: 512 GB
+	//     max: 1024 GB
 	// model11 is like this:
 	// - index: 11
 	// range:
 	//   - name: CPU
-	//     min: 1024
+	//     min: 1024 C
 	//     max: MAXINT
 	//   - name: memory
-	// 	   min: 1024
-	// 	   max: MAXINT
+	//     min: 1024 GB
+	//     max: MAXINT
 	// +optional
-	ResourceModels []resourceModel
+	ResourceModels []ResourceModel
 }
 
 // ResourceModel describes the modeling that you want to statistics.
@@ -158,11 +159,11 @@ type ResourceModelItem struct {
 
 	// Min is the minimum amount of this resource represented by resource name。
 	// +optional
-	Min uint64
+	Min resource.Quantity
 
 	// Max is the maximum amount of this resource represented by resource name。
 	// +optional
-	Max uint64
+	Max resource.Quantity
 }
 
 const (
@@ -278,8 +279,10 @@ type ResourceSummary struct {
 
 	// AllocatableModeling represents the number of each resources modeling in a cluster that are available for scheduling.
 	// Total amount of allocatable resources on all nodes.
+	// The key of this map is the index of ResourceModel, the value is the number of each resources modeling.
+	// For example, AllocatableModeling[2] = 10, which means there are 10 such resource models of ResourceModel[2].
 	// +optional
-	AllocatableModeling map[string]int32
+	AllocatableModeling map[int]int
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
