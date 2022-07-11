@@ -279,7 +279,8 @@ type ResourceSummary struct {
 
 	// AllocatableModeling represents the number of each resources modeling in a cluster that are available for scheduling.
 	// Total amount of allocatable resources on all nodes.
-	// The key of this map is the index of ResourceModel, the value is the number of each resources modeling.
+	// The key of this map is the index of ResourceModel,
+	// The value of this map is the number of nodes that own the resources delineated by this modeling.
 	// For example, AllocatableModeling[2] = 10, which means there are 10 such resource models of ResourceModel[2].
 	// +optional
 	AllocatableModeling map[int]int
