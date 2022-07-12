@@ -1,0 +1,60 @@
+apiVersion: application.karmada.io/v1alpha1
+kind: Application
+metadata:
+  name: test-1
+spec:
+  components:
+    - name: ref-deploy
+      type: objectTemplate
+      objectTemplate:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: test
+        namespace: default
+    - name: ref-configmap
+      type: objectTemplate
+      objectTemplate:
+        apiVersion: v1
+        kind: Configmap
+        name: test
+        namespace: default
+status:
+  componentsReady: 2
+  componentsTotal: 2
+  components:
+    - apiVersion: v1
+      kind: Configmap
+      name: test
+      status: Ready
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: test
+      status: Ready
+---
+apiVersion: application.karmada.io/v1alpha1
+kind: Application
+metadata:
+  name: test-2
+spec:
+  components:
+    - name: helm-redis
+      type: helmTemplate
+      helmTemplate:
+        repoType: helm
+        url: xxxxxx
+        version: 1.15.6
+        componentKinds:
+          - group: xxx.io
+            version: v1
+            kind: CRD1
+        resource:
+          request:
+            cpu: 250m
+status:
+  componentsReady: 1
+  componentsTotal: 1
+  components:
+    - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+      kind: HelmRelease
+      name: helm-redis
+      status: Release reconciliation succeeded
