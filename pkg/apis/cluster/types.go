@@ -142,9 +142,9 @@ type ClusterSpec struct {
 
 // ResourceModel describes the modeling that you want to statistics.
 type ResourceModel struct {
-	// Index is the index for the resource modeling.
+	// Grade is the index for the resource modeling.
 	// +optional
-	Index int
+	Grade int
 
 	// Ranges describes the resource quota ranges.
 	// +optional
@@ -279,11 +279,16 @@ type ResourceSummary struct {
 
 	// AllocatableModeling represents the number of each resources modeling in a cluster that are available for scheduling.
 	// Total amount of allocatable resources on all nodes.
-	// The key of this map is the index of ResourceModel,
-	// The value of this map is the number of nodes that own the resources delineated by this modeling.
-	// For example, AllocatableModeling[2] = 10, which means there are 10 such resource models of ResourceModel[2].
+	// The Grade of AllocatableModelingItem is the index of ResourceModel,
+	// The Count of AllocatableModelingItem is the number of nodes that own the resources delineated by this modeling.
+	// For example, AllocatableModelingItem{Grade: 2, Count: 10}, which means there are 10 such resource models of ResourceModel[2].
 	// +optional
-	AllocatableModeling map[int]int
+	AllocatableModeling []AllocatableModelingItem
+}
+
+type AllocatableModelingItem struct {
+	Grade int
+	Count int
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
