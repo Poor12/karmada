@@ -76,12 +76,8 @@ type resourceModels struct {
 	// +required
 	Quantity int
 
-	// sortNum is the number of sort of allocatable resource models
-	// +required
-	sortNum int
-
-	// when the sortNum is less than or equal to six, it will be sorted by linkedlist,
-	// when the sortNum is more than six, it will be sorted by red-black tree.
+	// when the the number of node is less than or equal to six, it will be sorted by linkedlist,
+	// when the the number of node is more than six, it will be sorted by red-black tree.
 
 	// when the data structure is linkedlist,
 	// each item will store clusterResourceNode.
@@ -136,7 +132,7 @@ func InitSummary(rsName []corev1.ResourceName, rsList []corev1.ResourceList) (mo
 	return ms, nil
 }
 
-func (ms *modelingSummary) getIndex(crn *clusterResourceNode) int {
+func (ms *modelingSummary) getIndex(crn clusterResourceNode) int {
 	tmpQuantity := crn.resourceList[DefaultModelSorting[0]]
 	quantityNum, ok := tmpQuantity.AsInt64()
 	if !ok {
@@ -200,10 +196,10 @@ func safeChangeNum(num *int, change int) {
 	lock.Unlock()
 }
 
-func (ms *modelingSummary) AddToResourceSummary(crn *clusterResourceNode) {
+func (ms *modelingSummary) AddToResourceSummary(crn clusterResourceNode) {
 	index := ms.getIndex(crn)
 	modeling := &(*ms)[index]
-	if modeling.sortNum <= 5 {
+	if getNodeNum(modeling) <= 5 {
 		root := modeling.linkedlist
 		if root == nil {
 			root = list.New()
@@ -211,29 +207,34 @@ func (ms *modelingSummary) AddToResourceSummary(crn *clusterResourceNode) {
 		found := false
 		// traverse linkedlist to add quantity of recourse modeling
 		for element := root.Front(); element != nil; element = element.Next() {
-			switch clusterResourceNodeComparator(element, crn) {
+			switch clusterResourceNodeComparator(element.Value, crn) {
 			case 0:
 				{
 					tmpCrn := element.Value.(clusterResourceNode)
 					safeChangeNum(&tmpCrn.quantity, crn.quantity)
+					element.Value = tmpCrn
 					found = true
+					break
 				}
 			case 1:
 				{
 					root.InsertBefore(crn, element)
-					safeChangeNum(&modeling.sortNum, 1)
 					found = true
+					break
 				}
 			case -1:
 				{
 					continue
 				}
 			}
+			if found {
+				break
+			}
 		}
 		if !found {
 			root.PushBack(crn)
-			safeChangeNum(&modeling.sortNum, 1)
 		}
+		modeling.linkedlist = root
 	} else {
 		root := modeling.redblackTree
 		if root == nil {
@@ -242,12 +243,13 @@ func (ms *modelingSummary) AddToResourceSummary(crn *clusterResourceNode) {
 		}
 		tmpNode := root.GetNode(crn)
 		if tmpNode != nil {
-			node := tmpNode.Key.(*clusterResourceNode)
+			node := tmpNode.Key.(clusterResourceNode)
 			safeChangeNum(&node.quantity, crn.quantity)
+			tmpNode.Key = node
 		} else {
 			root.Put(crn, crn.quantity)
-			safeChangeNum(&modeling.sortNum, 1)
 		}
+		modeling.redblackTree = root
 	}
 	safeChangeNum(&modeling.Quantity, crn.quantity)
 }
@@ -269,22 +271,36 @@ func rbtConvertToLl(rbt *rbt.Tree) *list.List {
 	return root
 }
 
-func (ms *modelingSummary) DeleteFromResourceSummary(crn *clusterResourceNode) error {
+func getNodeNum(model *resourceModels) int {
+	if model.linkedlist != nil && model.redblackTree == nil {
+		return model.linkedlist.Len()
+	} else if model.linkedlist == nil && model.redblackTree != nil {
+		return model.redblackTree.Size()
+	} else if model.linkedlist == nil && model.redblackTree == nil {
+		return 0
+	} else if model.linkedlist != nil && model.redblackTree != nil {
+		klog.Info("getNodeNum: unknow error")
+	}
+	return 0
+}
+
+func (ms *modelingSummary) DeleteFromResourceSummary(crn clusterResourceNode) error {
 	index := ms.getIndex(crn)
-	modeling := (*ms)[index]
-	if modeling.sortNum >= 6 {
+	modeling := &(*ms)[index]
+	if getNodeNum(modeling) >= 6 {
 		root := modeling.redblackTree
 		tmpNode := root.GetNode(crn)
 		if tmpNode != nil {
-			node := tmpNode.Key.(*clusterResourceNode)
+			node := tmpNode.Key.(clusterResourceNode)
 			safeChangeNum(&node.quantity, -crn.quantity)
+			tmpNode.Key = node
 			if node.quantity == 0 {
-				root.Remove(crn)
-				safeChangeNum(&modeling.sortNum, -1)
+				root.Remove(tmpNode)
 			}
 		} else {
 			return errors.New("delete fail: node no found in redblack tree")
 		}
+		modeling.redblackTree = root
 	} else {
 		root, tree := modeling.linkedlist, modeling.redblackTree
 		if root == nil && tree != nil {
@@ -296,25 +312,29 @@ func (ms *modelingSummary) DeleteFromResourceSummary(crn *clusterResourceNode) e
 		found := false
 		// traverse linkedlist to remove quantity of recourse modeling
 		for element := root.Front(); element != nil; element = element.Next() {
-			if clusterResourceNodeComparator(element, crn) == 0 {
+			if clusterResourceNodeComparator(element.Value, crn) == 0 {
 				tmpCrn := element.Value.(clusterResourceNode)
 				safeChangeNum(&tmpCrn.quantity, -crn.quantity)
+				element.Value = tmpCrn
 				if tmpCrn.quantity == 0 {
 					root.Remove(element)
-					safeChangeNum(&modeling.sortNum, -1)
 				}
 				found = true
+			}
+			if found {
+				break
 			}
 		}
 		if !found {
 			return errors.New("delete fail: node no found in linkedlist")
 		}
+		modeling.linkedlist = root
 	}
 	safeChangeNum(&modeling.Quantity, -crn.quantity)
 	return nil
 }
 
-func (ms *modelingSummary) UpdateInResourceSummary(newNode, oldNode *clusterResourceNode) {
+func (ms *modelingSummary) UpdateInResourceSummary(oldNode, newNode clusterResourceNode) {
 	ms.AddToResourceSummary(newNode)
 	ms.DeleteFromResourceSummary(oldNode)
 }

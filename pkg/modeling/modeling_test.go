@@ -91,7 +91,7 @@ func TestGetIndex(t *testing.T) {
 		t.Errorf("Got %v expected %v", err, nil)
 	}
 
-	crn := &clusterResourceNode{
+	crn := clusterResourceNode{
 		quantity: 1,
 		resourceList: corev1.ResourceList{
 			corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
@@ -104,7 +104,7 @@ func TestGetIndex(t *testing.T) {
 		t.Errorf("Got %v expected %v", index, 1)
 	}
 
-	crn = &clusterResourceNode{
+	crn = clusterResourceNode{
 		quantity: 1,
 		resourceList: corev1.ResourceList{
 			corev1.ResourceCPU:    *resource.NewMilliQuantity(20, resource.DecimalSI),
@@ -187,6 +187,10 @@ func TestSafeChangeNum(t *testing.T) {
 	if num != 2 {
 		t.Errorf("Got %v expected %v", num, 3)
 	}
+}
+
+func TestGetNodeNum(t *testing.T) {
+
 }
 
 func TestLlConvertToRbt(t *testing.T) {
@@ -434,16 +438,16 @@ func TestAddToResourceSummary(t *testing.T) {
 		},
 	}
 
-	ms.AddToResourceSummary(&crn1)
-	ms.AddToResourceSummary(&crn2)
-	ms.AddToResourceSummary(&crn3)
+	ms.AddToResourceSummary(crn1)
+	ms.AddToResourceSummary(crn2)
+	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && v.sortNum != 0 {
-			t.Errorf("Got %v expected %v", v.sortNum, 0)
+		if index == 0 && getNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
 		}
-		if index == 1 && v.sortNum != 3 {
-			t.Errorf("Got %v expected %v", v.sortNum, 3)
+		if index == 1 && getNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -461,13 +465,13 @@ func TestAddToResourceSummary(t *testing.T) {
 		},
 	}
 
-	ms.AddToResourceSummary(&crn4)
+	ms.AddToResourceSummary(crn4)
 
 	if actualValue := ms[0]; actualValue.Quantity != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
 
-	if actualValue := ms[0]; actualValue.sortNum != 1 {
+	if actualValue := ms[0]; getNodeNum(&actualValue) != 1 {
 		t.Errorf("Got %v expected %v", actualValue, 1)
 	}
 }
@@ -517,16 +521,16 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		},
 	}
 
-	ms.AddToResourceSummary(&crn1)
-	ms.AddToResourceSummary(&crn2)
-	ms.AddToResourceSummary(&crn3)
+	ms.AddToResourceSummary(crn1)
+	ms.AddToResourceSummary(crn2)
+	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && v.sortNum != 0 {
-			t.Errorf("Got %v expected %v", v.sortNum, 0)
+		if index == 0 && getNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
 		}
-		if index == 1 && v.sortNum != 3 {
-			t.Errorf("Got %v expected %v", v.sortNum, 3)
+		if index == 1 && getNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -544,7 +548,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		},
 	}
 
-	err = ms.DeleteFromResourceSummary(&crn4)
+	err = ms.DeleteFromResourceSummary(crn4)
 
 	if err == nil {
 		t.Errorf("Got %v expected %v", err, nil)
@@ -554,7 +558,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", actualValue, 6)
 	}
 
-	if actualValue := ms[0]; actualValue.sortNum != 0 {
+	if actualValue := ms[0]; getNodeNum(&actualValue) != 0 {
 		t.Errorf("Got %v expected %v", actualValue, 0)
 	}
 }
@@ -604,16 +608,16 @@ func TestUpdateSummary(t *testing.T) {
 		},
 	}
 
-	ms.AddToResourceSummary(&crn1)
-	ms.AddToResourceSummary(&crn2)
-	ms.AddToResourceSummary(&crn3)
+	ms.AddToResourceSummary(crn1)
+	ms.AddToResourceSummary(crn2)
+	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && v.sortNum != 0 {
-			t.Errorf("Got %v expected %v", v.sortNum, 0)
+		if index == 0 && getNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
 		}
-		if index == 1 && v.sortNum != 3 {
-			t.Errorf("Got %v expected %v", v.sortNum, 3)
+		if index == 1 && getNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -621,6 +625,14 @@ func TestUpdateSummary(t *testing.T) {
 		if index == 1 && v.Quantity != 6 {
 			t.Errorf("Got %v expected %v", v.Quantity, 6)
 		}
+	}
+
+	crn2 = clusterResourceNode{
+		quantity: 1,
+		resourceList: corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		},
 	}
 
 	crn4 := clusterResourceNode{
@@ -631,13 +643,13 @@ func TestUpdateSummary(t *testing.T) {
 		},
 	}
 
-	ms.UpdateInResourceSummary(&crn2, &crn4)
+	ms.UpdateInResourceSummary(crn2, crn4)
 
 	if actualValue := ms[1]; actualValue.Quantity != 7 {
 		t.Errorf("Got %v expected %v", actualValue, 4)
 	}
 
-	if actualValue := ms[1]; actualValue.sortNum != 4 {
-		t.Errorf("Got %v expected %v", actualValue, 4)
+	if actualValue := ms[1]; getNodeNum(&actualValue) != 3 {
+		t.Errorf("Got %v expected %v", actualValue, 3)
 	}
 }
