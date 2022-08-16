@@ -6,62 +6,84 @@ import (
 	"sync"
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 )
+
+// ResourceName is the name identifying various resources in a ResourceList.
+type ResourceName string
+
+// Resource names must be not more than 63 characters, consisting of upper- or lower-case alphanumeric characters,
+// with the -, _, and . characters allowed anywhere, except the first or last character.
+// The default convention, matching that for annotations, is to use lower-case names, with dashes, rather than
+// camel case, separating compound words.
+// Fully-qualified resource typenames are constructed from a DNS-style subdomain, followed by a slash `/` and a name.
+const (
+	// CPU, in cores. (500m = .5 cores)
+	ResourceCPU ResourceName = "cpu"
+	// Memory, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	ResourceMemory ResourceName = "memory"
+	// Volume size, in bytes (e,g. 5Gi = 5GiB = 5 * 1024 * 1024 * 1024)
+	ResourceStorage ResourceName = "storage"
+	// Local ephemeral storage, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	// The resource name for ResourceEphemeralStorage is alpha and it can change across releases.
+	ResourceEphemeralStorage ResourceName = "ephemeral-storage"
+)
+
+// ResourceList is a set of (resource name, quantity) pairs.
+type ResourceList map[ResourceName]resource.Quantity
 
 var (
 	lock                sync.Mutex
 	defaultModelLevel   = 10
 	modelSorting        []int64
-	DefaultModelSorting = []corev1.ResourceName{
-		corev1.ResourceCPU,
-		corev1.ResourceMemory,
-		corev1.ResourceStorage,
-		corev1.ResourceEphemeralStorage,
+	DefaultModelSorting = []ResourceName{
+		ResourceCPU,
+		ResourceMemory,
+		ResourceStorage,
+		ResourceEphemeralStorage,
 	}
 
-	DefaultModel = []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	DefaultModel = []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(4, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*4, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(4, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*4, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(16, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*16, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(16, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*16, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(32, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*32, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(32, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*32, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(64, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*64, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(64, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*64, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(128, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*128, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(128, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*128, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(256, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*256, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(256, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*256, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(512, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*512, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(512, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*512, resource.DecimalSI),
 		},
 	}
 )
@@ -102,10 +124,10 @@ type clusterResourceNode struct {
 	// It maybe contain cpu, mrmory, gpu...
 	// User can specify which parameters need to be included before the cluster starts
 	// +required
-	resourceList corev1.ResourceList
+	resourceList ResourceList
 }
 
-func InitSummary(rsName []corev1.ResourceName, rsList []corev1.ResourceList) (modelingSummary, error) {
+func InitSummary(rsName []ResourceName, rsList []ResourceList) (modelingSummary, error) {
 	if len(rsName) != 0 && len(rsList) != 0 && (len(rsName) != len(rsList[0])) {
 		return nil, errors.New("the number of resourceName is not equal the number of resourceList")
 	}

@@ -7,20 +7,19 @@ import (
 	"time"
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestInitSummary(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU, ResourceMemory}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -34,15 +33,15 @@ func TestInitSummary(t *testing.T) {
 }
 
 func TestInitSummaryError(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -74,15 +73,15 @@ func TestSearchLastLessElement(t *testing.T) {
 }
 
 func TestGetIndex(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU, ResourceMemory}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -93,9 +92,9 @@ func TestGetIndex(t *testing.T) {
 
 	crn := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 	index := ms.getIndex(crn)
@@ -106,9 +105,9 @@ func TestGetIndex(t *testing.T) {
 
 	crn = clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(20, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*100, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewMilliQuantity(20, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*100, resource.DecimalSI),
 		},
 	}
 	index = ms.getIndex(crn)
@@ -121,17 +120,17 @@ func TestGetIndex(t *testing.T) {
 func TestClusterResourceNodeComparator(t *testing.T) {
 	crn1 := clusterResourceNode{
 		quantity: 10,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(10, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(10, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 789,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 	if res := clusterResourceNodeComparator(crn1, crn2); res != 1 {
@@ -140,17 +139,17 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 
 	crn1 = clusterResourceNode{
 		quantity: 10,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 
 	crn2 = clusterResourceNode{
 		quantity: 789,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 	if res := clusterResourceNodeComparator(crn1, crn2); res != 0 {
@@ -159,17 +158,17 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 
 	crn1 = clusterResourceNode{
 		quantity: 10,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
 	}
 
 	crn2 = clusterResourceNode{
 		quantity: 789,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*10, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*10, resource.DecimalSI),
 		},
 	}
 	if res := clusterResourceNodeComparator(crn1, crn2); res != -1 {
@@ -196,49 +195,49 @@ func TestGetNodeNum(t *testing.T) {
 func TestLlConvertToRbt(t *testing.T) {
 	crn1 := clusterResourceNode{
 		quantity: 6,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*7, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*7, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 5,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn3 := clusterResourceNode{
 		quantity: 4,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
 		},
 	}
 
 	crn4 := clusterResourceNode{
 		quantity: 3,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn5 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn6 := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*12, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*12, resource.DecimalSI),
 		},
 	}
 	mylist := list.New()
@@ -277,49 +276,49 @@ func TestLlConvertToRbt(t *testing.T) {
 func TestRbtConvertToLl(t *testing.T) {
 	crn1 := clusterResourceNode{
 		quantity: 6,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*7, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*7, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 5,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn3 := clusterResourceNode{
 		quantity: 4,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*8, resource.DecimalSI),
 		},
 	}
 
 	crn4 := clusterResourceNode{
 		quantity: 3,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn5 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn6 := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*12, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*12, resource.DecimalSI),
 		},
 	}
 	tree := rbt.NewWith(clusterResourceNodeComparator)
@@ -394,15 +393,15 @@ func TestRbtConvertToLl(t *testing.T) {
 }
 
 func TestAddToResourceSummary(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU, ResourceMemory}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -416,25 +415,25 @@ func TestAddToResourceSummary(t *testing.T) {
 
 	crn1 := clusterResourceNode{
 		quantity: 3,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn3 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
@@ -459,9 +458,9 @@ func TestAddToResourceSummary(t *testing.T) {
 
 	crn4 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
 		},
 	}
 
@@ -477,15 +476,15 @@ func TestAddToResourceSummary(t *testing.T) {
 }
 
 func TestDeleteFromResourceSummary(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU, ResourceMemory}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -499,25 +498,25 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 
 	crn1 := clusterResourceNode{
 		quantity: 3,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn3 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
@@ -542,9 +541,9 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 
 	crn4 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
 		},
 	}
 
@@ -564,15 +563,15 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 }
 
 func TestUpdateSummary(t *testing.T) {
-	rsName := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	rsList := []corev1.ResourceList{
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rsName := []ResourceName{ResourceCPU, ResourceMemory}
+	rsList := []ResourceList{
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
 		},
-		map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
+		map[ResourceName]resource.Quantity{
+			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
 		}}
 
 	ms, err := InitSummary(rsName, rsList)
@@ -586,25 +585,25 @@ func TestUpdateSummary(t *testing.T) {
 
 	crn1 := clusterResourceNode{
 		quantity: 3,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*3, resource.DecimalSI),
 		},
 	}
 
 	crn2 := clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn3 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
@@ -629,17 +628,17 @@ func TestUpdateSummary(t *testing.T) {
 
 	crn2 = clusterResourceNode{
 		quantity: 1,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(1024*6, resource.DecimalSI),
 		},
 	}
 
 	crn4 := clusterResourceNode{
 		quantity: 2,
-		resourceList: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			corev1.ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
+		resourceList: ResourceList{
+			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
+			ResourceMemory: *resource.NewQuantity(19, resource.DecimalSI),
 		},
 	}
 
