@@ -33,6 +33,32 @@ const (
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[ResourceName]resource.Quantity
 
+// ResourceModel describes the modeling that you want to statistics.
+type ResourceModel struct {
+	// Grade is the index for the resource modeling.
+	// +optional
+	Grade int
+
+	// Ranges describes the resource quota ranges.
+	// +optional
+	Ranges []ResourceModelItem
+}
+
+// ResourceModelItem describes the detail of each modeling quota that ranges from min to max.
+type ResourceModelItem struct {
+	// Name is the name for the resource that you want to categorize.
+	// +optional
+	Name ResourceName
+
+	// Min is the minimum amount of this resource represented by resource name。
+	// +optional
+	Min resource.Quantity
+
+	// Max is the maximum amount of this resource represented by resource name。
+	// +optional
+	Max resource.Quantity
+}
+
 var (
 	lock                sync.Mutex
 	defaultModelLevel   = 10
@@ -44,6 +70,9 @@ var (
 		ResourceEphemeralStorage,
 	}
 
+	// Although the quota of each resource modeling is an interval. But the right boundary of each interval never coincides with the left boundary of the next interval.
+	// If the two overlap, it will cause ambiguity, and the modeling in the overlapping interval will belong to multiple intervals, which will cause an error.
+	// Then we can mark the interval only with the left boundary of each interval.
 	DefaultModel = []ResourceList{
 		map[ResourceName]resource.Quantity{
 			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
@@ -127,7 +156,19 @@ type clusterResourceNode struct {
 	resourceList ResourceList
 }
 
-func InitSummary(rsName []ResourceName, rsList []ResourceList) (modelingSummary, error) {
+func InitSummary(resourceModels []ResourceModel) (modelingSummary, error) {
+	rsName, rsList := []ResourceName{}, []ResourceList{}
+	for _, rm := range resourceModels {
+		for _, rmItem := range rm.Ranges {
+			if len(rsName) != len(rm.Ranges) {
+				rsName = append(rsName, rmItem.Name)
+			}
+			rsList = append(rsList, map[ResourceName]resource.Quantity{
+				rmItem.Name: rmItem.Min,
+			})
+		}
+	}
+
 	if len(rsName) != 0 && len(rsList) != 0 && (len(rsName) != len(rsList[0])) {
 		return nil, errors.New("the number of resourceName is not equal the number of resourceList")
 	}

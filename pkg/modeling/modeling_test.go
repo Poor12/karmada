@@ -11,18 +11,40 @@ import (
 )
 
 func TestInitSummary(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU, ResourceMemory}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 	if actualValue := len(ms); actualValue != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
@@ -33,18 +55,40 @@ func TestInitSummary(t *testing.T) {
 }
 
 func TestInitSummaryError(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		ResourceModel{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		ResourceModel{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 	if actualValue := len(ms); actualValue != 0 {
 		t.Errorf("Got %v expected %v", actualValue, 0)
 	}
@@ -73,18 +117,40 @@ func TestSearchLastLessElement(t *testing.T) {
 }
 
 func TestGetIndex(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU, ResourceMemory}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		ResourceModel{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewMilliQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		ResourceModel{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 
 	if err != nil {
 		t.Errorf("Got %v expected %v", err, nil)
@@ -393,18 +459,40 @@ func TestRbtConvertToLl(t *testing.T) {
 }
 
 func TestAddToResourceSummary(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU, ResourceMemory}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		ResourceModel{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		ResourceModel{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 	if actualValue := len(ms); actualValue != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
@@ -476,18 +564,40 @@ func TestAddToResourceSummary(t *testing.T) {
 }
 
 func TestDeleteFromResourceSummary(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU, ResourceMemory}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		ResourceModel{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		ResourceModel{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				ResourceModelItem{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				ResourceModelItem{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 	if actualValue := len(ms); actualValue != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
@@ -563,18 +673,40 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 }
 
 func TestUpdateSummary(t *testing.T) {
-	rsName := []ResourceName{ResourceCPU, ResourceMemory}
-	rsList := []ResourceList{
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+	rms := []ResourceModel{
+		{
+			Grade: 0,
+			Ranges: []ResourceModelItem{
+				{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1, resource.DecimalSI),
+				},
+				{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(0, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024, resource.DecimalSI),
+				},
+			},
 		},
-		map[ResourceName]resource.Quantity{
-			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-			ResourceMemory: *resource.NewQuantity(1024*2, resource.DecimalSI),
-		}}
+		{
+			Grade: 1,
+			Ranges: []ResourceModelItem{
+				{
+					Name: ResourceCPU,
+					Min:  *resource.NewQuantity(1, resource.DecimalSI),
+					Max:  *resource.NewQuantity(2, resource.DecimalSI),
+				},
+				{
+					Name: ResourceMemory,
+					Min:  *resource.NewQuantity(1024, resource.DecimalSI),
+					Max:  *resource.NewQuantity(1024*2, resource.DecimalSI),
+				},
+			},
+		},
+	}
 
-	ms, err := InitSummary(rsName, rsList)
+	ms, err := InitSummary(rms)
 	if actualValue := len(ms); actualValue != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
