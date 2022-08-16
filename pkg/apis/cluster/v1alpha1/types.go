@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -117,66 +116,6 @@ type ClusterSpec struct {
 	// any resource that does not tolerate the Taint.
 	// +optional
 	Taints []corev1.Taint `json:"taints,omitempty"`
-
-	// ResourceModels is the list of resource modeling in this cluster. Each modeling quota can be customized by the user.
-	// Modeling name must be one of the following: cpu, memory, storage, ephemeral-storage.
-	// If the user does not define the modeling name and modeling quota, it will be the default model.
-	// The default model index from 0 to 11. Each default model's cpu quota is (2^index-1, 2^index], index >= 0
-	// Each default model's memory quota is also (2^index-1, 2^index], index >= 0, for example, model0 is like this:
-	// - index: 0
-	// ranges:
-	//   - name: CPU
-	//     min: 0 C
-	//     max: 1 C
-	//   - name: memory
-	//     min: 0 GB
-	//     max: 1 GB
-	// model10 is like this:
-	// - index: 10
-	// range:
-	//   - name: CPU
-	//     min: 512 C
-	//     max: 1024 C
-	//   - name: memory
-	//     min: 512 GB
-	//     max: 1024 GB
-	// model11 is like this:
-	// - index: 11
-	// range:
-	//   - name: CPU
-	//     min: 1024 C
-	//     max: MAXINT
-	//   - name: memory
-	//     min: 1024 GB
-	//     max: MAXINT
-	// +optional
-	ResourceModels []ResourceModel `json:"resourceModels,omitempty"`
-}
-
-// ResourceModel describes the modeling that you want to statistics.
-type ResourceModel struct {
-	// Grade is the index for the resource modeling.
-	// +optional
-	Grade int `json:"grade,omitempty"`
-
-	// Ranges describes the resource quota ranges.
-	// +optional
-	Ranges []ResourceModelItem `json:"ranges,omitempty"`
-}
-
-// ResourceModelItem describes the detail of each modeling quota that ranges from min to max.
-type ResourceModelItem struct {
-	// Name is the name for the resource that you want to categorize.
-	// +optional
-	Name corev1.ResourceName `json:"name,omitempty"`
-
-	// Min is the minimum amount of this resource represented by resource name。
-	// +optional
-	Min resource.Quantity `json:"min,omitempty"`
-
-	// Max is the maximum amount of this resource represented by resource name。
-	// +optional
-	Max resource.Quantity `json:"max,omitempty"`
 }
 
 const (
