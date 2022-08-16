@@ -106,7 +106,8 @@ type ClusterSpec struct {
 	// +optional
 	Taints []corev1.Taint
 
-	// The model list of resource modeling in this cluster. Each modeling name and quota can be customized by the user.
+	// ResourceModels is the list of resource modeling in this cluster. Each modeling quota can be customized by the user.
+	// Modeling name must be one of the following: cpu, memory, storage, ephemeral-storage.
 	// If the user does not define the modeling name and modeling quota, it will be the default model.
 	// The default model index from 0 to 11. Each default model's cpu quota is (2^index-1, 2^index], index >= 0
 	// Each default model's memory quota is also (2^index-1, 2^index], index >= 0, for example, model0 is like this:
@@ -155,7 +156,7 @@ type ResourceModel struct {
 type ResourceModelItem struct {
 	// Name is the name for the resource that you want to categorize.
 	// +optional
-	Name string
+	Name corev1.ResourceName
 
 	// Min is the minimum amount of this resource represented by resource name。
 	// +optional
@@ -286,8 +287,14 @@ type ResourceSummary struct {
 	AllocatableModeling []AllocatableModelingItem
 }
 
+// AllocatableModelingItem represents the number of this resources modeling in a cluster that are available for scheduling.
 type AllocatableModelingItem struct {
+	// Grade is the index of ResourceModel.
+	// +optional
 	Grade int
+
+	// Count is the number of nodes that own the resources delineated by this modeling.
+	// +optional
 	Count int
 }
 

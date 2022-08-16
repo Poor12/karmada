@@ -76,8 +76,8 @@ type resourceModels struct {
 	// +required
 	Quantity int
 
-	// when the the number of node is less than or equal to six, it will be sorted by linkedlist,
-	// when the the number of node is more than six, it will be sorted by red-black tree.
+	// when the number of node is less than or equal to six, it will be sorted by linkedlist,
+	// when the number of node is more than six, it will be sorted by red-black tree.
 
 	// when the data structure is linkedlist,
 	// each item will store clusterResourceNode.
