@@ -3,6 +3,8 @@ package status
 import (
 	"context"
 	"fmt"
+	"github.com/karmada-io/karmada/pkg/features"
+	"github.com/karmada-io/karmada/pkg/modeling"
 	"net/http"
 	"sort"
 	"strings"
@@ -200,6 +202,29 @@ func (c *ClusterStatusController) syncClusterStatus(cluster *clusterv1alpha1.Clu
 		currentClusterStatus.APIEnablements = apiEnables
 		currentClusterStatus.NodeSummary = getNodeSummary(nodes)
 		currentClusterStatus.ResourceSummary = getResourceSummary(nodes, pods)
+
+		if features.FeatureGate.Enabled(features.CustomizedClusterResourceModeling) {
+			modelingSummary, err := modeling.InitSummary(nil)
+			if err != nil {
+			}
+
+			for _, node := range nodes {
+				nodeAvaliable := getNodeAvailable(node.Status.Allocatable, node.Name, pods)
+				klog.Info("xxxxxxxxx")
+				klog.Info(nodeAvaliable.Cpu().Value())
+				klog.Info("xxxxxxxxx")
+				klog.Info(nodeAvaliable.Memory().Value())
+				modelingSummary.AddToResourceSummary(modeling.NewClusterResourceNode(nodeAvaliable))
+			}
+
+			m := make([]clusterv1alpha1.AllocatableModeling, len(modelingSummary))
+			for index, resourceModel := range modelingSummary {
+				m[index].Grade = index
+				m[index].Count = modeling.GetNodeNum(&resourceModel)
+			}
+
+			currentClusterStatus.ResourceSummary.AllocatableModelings = m
+		}
 	}
 
 	setTransitionTime(currentClusterStatus.Conditions, readyCondition)
@@ -523,4 +548,38 @@ func getAllocatedResource(podList []*corev1.Pod) corev1.ResourceList {
 	}
 	allocated.AddResourcePods(podNum)
 	return allocated.ResourceList()
+}
+
+func getNodeAvailable(allocatable corev1.ResourceList, nodeName string, podList []*corev1.Pod) corev1.ResourceList {
+	allocated := util.EmptyResource()
+	podNum := int64(0)
+	for _, pod := range podList {
+		// When the phase of a pod is Succeeded or Failed, kube-scheduler would not consider its resource occupation.
+		if len(pod.Spec.NodeName) != 0 && pod.Spec.NodeName == nodeName && pod.Status.Phase != corev1.PodSucceeded && pod.Status.Phase != corev1.PodFailed {
+			allocated.AddPodRequest(&pod.Spec)
+			podNum++
+		}
+	}
+	allocated.AddResourcePods(podNum)
+
+	allowedPodNumber := allocatable.Pods().Value() - allocated.AllowedPodNumber
+	// When too many pods have been created, scheduling will fail so that the allocating pods number may be huge.
+	// If allowedPodNumber is less than or equal to 0, we don't allow more pods to be created.
+	if allowedPodNumber <= 0 {
+		klog.Warningf("The number of schedulable Pods on the node is less than or equal to 0, we won't add the node to cluster resource models.")
+		return nil
+	}
+
+	allowedResourceList := make(corev1.ResourceList)
+	for allocatableName, allocatableQuantity := range allocatable {
+		for allocatedName, allocatedQuantity := range allocated.ResourceList() {
+			if allocatableName == allocatedName {
+				allocatableQuantity.Sub(allocatedQuantity)
+				allowedResourceList[allocatableName] = allocatableQuantity
+				break
+			}
+		}
+	}
+
+	return allowedResourceList
 }

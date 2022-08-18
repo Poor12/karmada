@@ -156,7 +156,7 @@ func TestGetIndex(t *testing.T) {
 		t.Errorf("Got %v expected %v", err, nil)
 	}
 
-	crn := clusterResourceNode{
+	crn := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
@@ -169,7 +169,7 @@ func TestGetIndex(t *testing.T) {
 		t.Errorf("Got %v expected %v", index, 1)
 	}
 
-	crn = clusterResourceNode{
+	crn = ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewMilliQuantity(20, resource.DecimalSI),
@@ -184,7 +184,7 @@ func TestGetIndex(t *testing.T) {
 }
 
 func TestClusterResourceNodeComparator(t *testing.T) {
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 10,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(10, resource.DecimalSI),
@@ -192,7 +192,7 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 789,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
@@ -203,7 +203,7 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 		t.Errorf("Got %v expected %v", res, 1)
 	}
 
-	crn1 = clusterResourceNode{
+	crn1 = ClusterResourceNode{
 		quantity: 10,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -211,7 +211,7 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 		},
 	}
 
-	crn2 = clusterResourceNode{
+	crn2 = ClusterResourceNode{
 		quantity: 789,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -222,7 +222,7 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 		t.Errorf("Got %v expected %v", res, 0)
 	}
 
-	crn1 = clusterResourceNode{
+	crn1 = ClusterResourceNode{
 		quantity: 10,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -230,7 +230,7 @@ func TestClusterResourceNodeComparator(t *testing.T) {
 		},
 	}
 
-	crn2 = clusterResourceNode{
+	crn2 = ClusterResourceNode{
 		quantity: 789,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -259,7 +259,7 @@ func TestGetNodeNum(t *testing.T) {
 }
 
 func TestLlConvertToRbt(t *testing.T) {
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 6,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
@@ -267,7 +267,7 @@ func TestLlConvertToRbt(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 5,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -275,7 +275,7 @@ func TestLlConvertToRbt(t *testing.T) {
 		},
 	}
 
-	crn3 := clusterResourceNode{
+	crn3 := ClusterResourceNode{
 		quantity: 4,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
@@ -283,7 +283,7 @@ func TestLlConvertToRbt(t *testing.T) {
 		},
 	}
 
-	crn4 := clusterResourceNode{
+	crn4 := ClusterResourceNode{
 		quantity: 3,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
@@ -291,7 +291,7 @@ func TestLlConvertToRbt(t *testing.T) {
 		},
 	}
 
-	crn5 := clusterResourceNode{
+	crn5 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -299,7 +299,7 @@ func TestLlConvertToRbt(t *testing.T) {
 		},
 	}
 
-	crn6 := clusterResourceNode{
+	crn6 := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
@@ -321,26 +321,26 @@ func TestLlConvertToRbt(t *testing.T) {
 	}
 
 	actualValue := rbt.GetNode(crn5)
-	node := actualValue.Key.(clusterResourceNode)
+	node := actualValue.Key.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
 
 	actualValue = rbt.GetNode(crn6)
-	node = actualValue.Key.(clusterResourceNode)
+	node = actualValue.Key.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 1 {
 		t.Errorf("Got %v expected %v", actualValue, 1)
 	}
 
 	actualValue = rbt.GetNode(crn1)
-	node = actualValue.Key.(clusterResourceNode)
+	node = actualValue.Key.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 6 {
 		t.Errorf("Got %v expected %v", actualValue, 6)
 	}
 }
 
 func TestRbtConvertToLl(t *testing.T) {
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 6,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
@@ -348,7 +348,7 @@ func TestRbtConvertToLl(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 5,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(6, resource.DecimalSI),
@@ -356,7 +356,7 @@ func TestRbtConvertToLl(t *testing.T) {
 		},
 	}
 
-	crn3 := clusterResourceNode{
+	crn3 := ClusterResourceNode{
 		quantity: 4,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(5, resource.DecimalSI),
@@ -364,7 +364,7 @@ func TestRbtConvertToLl(t *testing.T) {
 		},
 	}
 
-	crn4 := clusterResourceNode{
+	crn4 := ClusterResourceNode{
 		quantity: 3,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
@@ -372,7 +372,7 @@ func TestRbtConvertToLl(t *testing.T) {
 		},
 	}
 
-	crn5 := clusterResourceNode{
+	crn5 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -380,7 +380,7 @@ func TestRbtConvertToLl(t *testing.T) {
 		},
 	}
 
-	crn6 := clusterResourceNode{
+	crn6 := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
@@ -412,42 +412,42 @@ func TestRbtConvertToLl(t *testing.T) {
 	}
 
 	actualValue := ll.Front()
-	node := actualValue.Value.(clusterResourceNode)
+	node := actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 2 {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
 	ll.Remove(actualValue)
 
 	actualValue = ll.Front()
-	node = actualValue.Value.(clusterResourceNode)
+	node = actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 6 {
 		t.Errorf("Got %v expected %v", actualValue, 6)
 	}
 	ll.Remove(actualValue)
 
 	actualValue = ll.Front()
-	node = actualValue.Value.(clusterResourceNode)
+	node = actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 1 {
 		t.Errorf("Got %v expected %v", actualValue, 1)
 	}
 	ll.Remove(actualValue)
 
 	actualValue = ll.Front()
-	node = actualValue.Value.(clusterResourceNode)
+	node = actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 4 {
 		t.Errorf("Got %v expected %v", actualValue, 4)
 	}
 	ll.Remove(actualValue)
 
 	actualValue = ll.Front()
-	node = actualValue.Value.(clusterResourceNode)
+	node = actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 5 {
 		t.Errorf("Got %v expected %v", actualValue, 5)
 	}
 	ll.Remove(actualValue)
 
 	actualValue = ll.Front()
-	node = actualValue.Value.(clusterResourceNode)
+	node = actualValue.Value.(ClusterResourceNode)
 	if quantity := node.quantity; quantity != 3 {
 		t.Errorf("Got %v expected %v", actualValue, 3)
 	}
@@ -501,7 +501,7 @@ func TestAddToResourceSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", err, nil)
 	}
 
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 3,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
@@ -509,7 +509,7 @@ func TestAddToResourceSummary(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -517,7 +517,7 @@ func TestAddToResourceSummary(t *testing.T) {
 		},
 	}
 
-	crn3 := clusterResourceNode{
+	crn3 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -530,11 +530,11 @@ func TestAddToResourceSummary(t *testing.T) {
 	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && getNodeNum(&v) != 0 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
+		if index == 0 && GetNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 0)
 		}
-		if index == 1 && getNodeNum(&v) != 2 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
+		if index == 1 && GetNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -544,7 +544,7 @@ func TestAddToResourceSummary(t *testing.T) {
 		}
 	}
 
-	crn4 := clusterResourceNode{
+	crn4 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
@@ -558,7 +558,7 @@ func TestAddToResourceSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", actualValue, 2)
 	}
 
-	if actualValue := ms[0]; getNodeNum(&actualValue) != 1 {
+	if actualValue := ms[0]; GetNodeNum(&actualValue) != 1 {
 		t.Errorf("Got %v expected %v", actualValue, 1)
 	}
 }
@@ -606,7 +606,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", err, nil)
 	}
 
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 3,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
@@ -614,7 +614,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -622,7 +622,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		},
 	}
 
-	crn3 := clusterResourceNode{
+	crn3 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -635,11 +635,11 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && getNodeNum(&v) != 0 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
+		if index == 0 && GetNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 0)
 		}
-		if index == 1 && getNodeNum(&v) != 2 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
+		if index == 1 && GetNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -649,7 +649,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		}
 	}
 
-	crn4 := clusterResourceNode{
+	crn4 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -667,7 +667,7 @@ func TestDeleteFromResourceSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", actualValue, 6)
 	}
 
-	if actualValue := ms[0]; getNodeNum(&actualValue) != 0 {
+	if actualValue := ms[0]; GetNodeNum(&actualValue) != 0 {
 		t.Errorf("Got %v expected %v", actualValue, 0)
 	}
 }
@@ -715,7 +715,7 @@ func TestUpdateSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", err, nil)
 	}
 
-	crn1 := clusterResourceNode{
+	crn1 := ClusterResourceNode{
 		quantity: 3,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(8, resource.DecimalSI),
@@ -723,7 +723,7 @@ func TestUpdateSummary(t *testing.T) {
 		},
 	}
 
-	crn2 := clusterResourceNode{
+	crn2 := ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -731,7 +731,7 @@ func TestUpdateSummary(t *testing.T) {
 		},
 	}
 
-	crn3 := clusterResourceNode{
+	crn3 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -744,11 +744,11 @@ func TestUpdateSummary(t *testing.T) {
 	ms.AddToResourceSummary(crn3)
 
 	for index, v := range ms {
-		if index == 0 && getNodeNum(&v) != 0 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 0)
+		if index == 0 && GetNodeNum(&v) != 0 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 0)
 		}
-		if index == 1 && getNodeNum(&v) != 2 {
-			t.Errorf("Got %v expected %v", getNodeNum(&v), 2)
+		if index == 1 && GetNodeNum(&v) != 2 {
+			t.Errorf("Got %v expected %v", GetNodeNum(&v), 2)
 		}
 		if index == 0 && v.Quantity != 0 {
 			t.Errorf("Got %v expected %v", v.Quantity, 0)
@@ -758,7 +758,7 @@ func TestUpdateSummary(t *testing.T) {
 		}
 	}
 
-	crn2 = clusterResourceNode{
+	crn2 = ClusterResourceNode{
 		quantity: 1,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -766,7 +766,7 @@ func TestUpdateSummary(t *testing.T) {
 		},
 	}
 
-	crn4 := clusterResourceNode{
+	crn4 := ClusterResourceNode{
 		quantity: 2,
 		resourceList: ResourceList{
 			ResourceCPU:    *resource.NewQuantity(1, resource.DecimalSI),
@@ -780,7 +780,7 @@ func TestUpdateSummary(t *testing.T) {
 		t.Errorf("Got %v expected %v", actualValue, 4)
 	}
 
-	if actualValue := ms[1]; getNodeNum(&actualValue) != 3 {
+	if actualValue := ms[1]; GetNodeNum(&actualValue) != 3 {
 		t.Errorf("Got %v expected %v", actualValue, 3)
 	}
 }
