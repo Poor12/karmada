@@ -70,6 +70,8 @@ func (Strategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 
 // PrepareForCreate is invoked on create before validation to normalize the object.
 func (Strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
+	cluster := obj.(*clusterapis.Cluster)
+	mutation.MutateClusterResourceModels(cluster)
 }
 
 // PrepareForUpdate is invoked on update before validation to normalize the object.
