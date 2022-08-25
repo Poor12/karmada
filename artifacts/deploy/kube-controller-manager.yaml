@@ -40,7 +40,7 @@ spec:
             - --client-ca-file=/etc/karmada/pki/ca.crt
             - --cluster-cidr=10.244.0.0/16
             - --cluster-name=karmada
-            - --cluster-signing-cert-file=/etc/karmada/pki/ca.crt
+            - --cluster-signing-cert-file=xxxxx
             - --cluster-signing-key-file=/etc/karmada/pki/ca.key
             - --controllers=namespace,garbagecollector,serviceaccount-token,ttl-after-finished
             - --kubeconfig=/etc/kubeconfig
