@@ -3,6 +3,7 @@ package benchmark
 import (
 	"context"
 	gorand "math/rand"
+	"sync"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -12,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 
@@ -25,42 +26,47 @@ import (
 
 var _ = ginkgo.Describe("Search bench test", ginkgo.Ordered, func() {
 	var (
-		rr          *searchv1alpha1.ResourceRegistry
-		pickPodName func(int) string
+		rr             *searchv1alpha1.ResourceRegistry
+		pickPodName    func(int) types.NamespacedName
+		isMultiCluster bool
 	)
 
 	ginkgo.BeforeAll(func() {
-		rrList, err := karmadaClient.SearchV1alpha1().ResourceRegistries().List(context.TODO(), metav1.ListOptions{})
-		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-		gomega.Expect(rrList.Items).Should(gomega.BeEmpty(), "ResourceRegistry is existed, clean it before test")
-
-		rr = &searchv1alpha1.ResourceRegistry{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "benchmark-" + rand.String(RandomStrLength),
-			},
-			Spec: searchv1alpha1.ResourceRegistrySpec{
-				ResourceSelectors: []searchv1alpha1.ResourceSelector{
-					{
-						APIVersion: "v1",
-						Kind:       "Pod",
-					},
-				},
-			},
+		var pods []types.NamespacedName
+		pods, isMultiCluster = randomGetNPods(10000)
+		pickPodName = func(i int) types.NamespacedName {
+			return pods[i%len(pods)]
 		}
-		framework.CreateResourceRegistry(karmadaClient, rr)
+
+		if isMultiCluster {
+			// rrList, err := karmadaClient.SearchV1alpha1().ResourceRegistries().List(context.TODO(), metav1.ListOptions{})
+			// gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			// gomega.Expect(rrList.Items).Should(gomega.BeEmpty(), "ResourceRegistry is existed, clean it before test")
+
+			// rr = &searchv1alpha1.ResourceRegistry{
+			// 	ObjectMeta: metav1.ObjectMeta{
+			// 		Name: "benchmark-" + rand.String(RandomStrLength),
+			// 	},
+			// 	Spec: searchv1alpha1.ResourceRegistrySpec{
+			// 		ResourceSelectors: []searchv1alpha1.ResourceSelector{
+			// 			{
+			// 				APIVersion: "v1",
+			// 				Kind:       "Pod",
+			// 			},
+			// 		},
+			// 	},
+			// }
+			// framework.CreateResourceRegistry(karmadaClient, rr)
+		}
+
 		defer func() {
 			// wait proxy is ready
 			gomega.Eventually(func(g gomega.Gomega) {
-				list, err := kubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{})
+				list, err := kubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{Limit: 500})
 				g.Expect(err).ShouldNot(gomega.HaveOccurred())
 				g.Expect(list.Items).ShouldNot(gomega.BeEmpty())
-			}).Should(gomega.Succeed())
+			}, time.Minute, time.Second).Should(gomega.Succeed())
 		}()
-
-		pods := randomGetNPods(10000)
-		pickPodName = func(i int) string {
-			return pods[i%len(pods)]
-		}
 	})
 	ginkgo.AfterAll(func() {
 		if rr != nil {
@@ -69,6 +75,7 @@ var _ = ginkgo.Describe("Search bench test", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("list pods", ginkgo.Label("measurement"), func() {
+		klog.Info("Start test: list pods")
 		measureDuration("List pods", func(int, *gmeasure.Stopwatch) error {
 			_, err := kubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{ResourceVersion: "0", Limit: 500})
 			return err
@@ -76,18 +83,20 @@ var _ = ginkgo.Describe("Search bench test", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("get pod", ginkgo.Label("measurement"), func() {
+		klog.Info("Start test: get pod")
 		measureDuration("Get pod", func(idx int, _ *gmeasure.Stopwatch) error {
-			podName := pickPodName(idx)
-			_, err := kubeClient.CoreV1().Pods(testNamespace).Get(context.TODO(), podName, metav1.GetOptions{ResourceVersion: "0"})
+			pod := pickPodName(idx)
+			_, err := kubeClient.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{ResourceVersion: "0"})
 			return err
 		})
 	})
 
 	ginkgo.It("update pod", ginkgo.Label("measurement"), func() {
+		klog.Info("Start test: update pod")
 		measureDuration("Update pod", func(idx int, sw *gmeasure.Stopwatch) error {
-			podName := pickPodName(idx)
+			pod := pickPodName(idx)
 			return wait.PollImmediate(time.Millisecond*10, time.Second*10, func() (done bool, err error) {
-				pod, err := kubeClient.CoreV1().Pods(testNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+				pod, err := kubeClient.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -132,20 +141,30 @@ func measureDuration(name string, f func(int, *gmeasure.Stopwatch) error) {
 }
 
 // randomGetNPods pick up about n pods into pool. Actually will not pick exactly n number of pods, usually less than n.
-func randomGetNPods(n int) []string {
-	pods := make([]string, 0, n)
+func randomGetNPods(n int) ([]types.NamespacedName, bool) {
+	pods := make([]types.NamespacedName, 0, n)
+	lock := sync.Mutex{}
 	appendPodsFunc := func(podList *corev1.PodList) {
+		lock.Lock()
+		defer lock.Unlock()
 		for _, pod := range podList.Items {
-			pods = append(pods, pod.Name)
+			pods = append(pods, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name})
 		}
 	}
 
 	clusterList, err := karmadaClient.ClusterV1alpha1().Clusters().List(context.TODO(), metav1.ListOptions{})
-	if errors.IsNotFound(err) {
+	if err != nil {
+		klog.Warningf("List cluster error, it is single cluster: %v", err)
+
 		// get from single cluster
 		podList, err := kubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{ResourceVersion: "0", Limit: int64(n)})
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 		appendPodsFunc(podList)
+		return pods, false
+	}
+
+	if errors.IsNotFound(err) {
+
 	}
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
@@ -160,20 +179,27 @@ func randomGetNPods(n int) []string {
 
 	controlPlaneClient := gclient.NewForConfigOrDie(restConfig)
 
+	wg := sync.WaitGroup{}
 	limit := int64(n / len(clusters))
 	for _, cluster := range clusterList.Items {
-		clusterClient, err := util.NewClusterClientSet(cluster.Name, controlPlaneClient, nil)
-		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+		wg.Add(1)
+		go func(clusterName string) {
+			defer wg.Done()
+			klog.Infof("List pods from %v", clusterName)
+			clusterClient, err := util.NewClusterClientSet(clusterName, controlPlaneClient, nil)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		podList, err := clusterClient.KubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{ResourceVersion: "0", Limit: limit})
-		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			podList, err := clusterClient.KubeClient.CoreV1().Pods(testNamespace).List(context.TODO(), metav1.ListOptions{ResourceVersion: "0", Limit: limit})
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		appendPodsFunc(podList)
+			appendPodsFunc(podList)
+		}(cluster.Name)
 	}
+	wg.Wait()
 
 	gorand.Shuffle(len(pods), func(i, j int) {
 		pods[i], pods[j] = pods[j], pods[i]
 	})
 	klog.Infof("picks up %v pods", len(pods))
-	return pods
+	return pods, true
 }
