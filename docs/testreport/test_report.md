@@ -1,6 +1,6 @@
 # Abstract
 
-With the large-scale implementation of Karmada in more and more enterprises and organizations, the scalability and large-scale of Karmada have gradually become a new focus of community users. Therefore, we have launched a large-scale test of Karmada, and now we announce that the Karmada multi-cloud management platform can stably support 100 clusters with 500,000 nodes online at the same time, and manage more than 2,000,000 pods. In this article, we will introduce the relevant metrics used for testing, how to conduct large-scale testing, and how we achieve large-scale node and cluster access.
+With the large-scale implementation of Karmada in more and more enterprises and organizations, the scalability and large-scale of Karmada have gradually become a new focus of community users. Therefore, we have launched a large-scale test of Karmada, and according to the analysis of the test results, the Karmada multi-cloud management platform can stably support 100 clusters with 500,000 nodes online at the same time, and manage more than 2,000,000 pods. In this article, we will introduce the relevant metrics used for testing, how to conduct large-scale testing, and how we achieve large-scale node and cluster access.
 
 # Backgroud
 
@@ -34,12 +34,13 @@ We describe the scalability of a multi-cluster system by priority as the followi
 
 1. Num of Clusters: The number of clusters is the most direct dimension to measure the resource pool size and carrying capacity and scalability of a multi-cluster system.
    With the remaining dimensions unchanged, the more clusters the system can access, the larger the resource pool of the system and the stronger the carrying capacity.
-2. Num of Resources: For the control plane of a multi-cluster system, the storage is not unlimited, and the number and overall size of resource objects created on the control plane are limited by the storage of the system control plane, which is also an important dimension restricting the scale of the resource pool of the multi-cluster system.
+2. Num of Resources(API Objects): For the control plane of a multi-cluster system, the storage is not unlimited, and the number and overall size of resource objects created on the control plane are limited by the storage of the system control plane, which is also an important dimension restricting the scale of the resource pool of the multi-cluster system.
    The resource object here not only refers to the resource template delivered to the member cluster, but also includes the cluster scheduling policy, multi-cluster services and other resources
 3. Cluster Size: Cluster size is a dimension that cannot be ignored when measuring the size of a multi-cluster system resource pool. On the one hand, when the number of clusters is equal, the larger the scale of a single cluster, the larger the resource pool of the entire multi-cluster system.
    On the other hand, the upper-layer capability of a multi-cluster system depends on the system's resource profile of the cluster. For example, in the scheduling process of resource selection clusters, cluster resources are an indispensable factor.
    Under the same circumstances, the larger the cluster scale, the greater the pressure on the control plane. Among cluster resources, Node and Pod are undoubtedly the two most important resources.
-   Node is the smallest carrier of computing, storage and other resources, and the number of Pods represents the application carrying capacity of a cluster.
+   Node is the smallest carrier of computing, storage and other resources, and the number of Pods represents the application carrying capacity of a cluster. 
+   In fact, resource objects in a single cluster also include common objects such as service, configmap, secret and so on. The introduction of these variables will make the testing process more complicated, so this test does not focus too much on the above variables.
    * Num of Nodes
    * Num of Pods
 
@@ -56,10 +57,10 @@ With reference to the SLI (Service Level Indicator)/SLO (Service Level Objective
 1. API Call Latency
 
 
-| Status  | SLI                                                                                                                      | SLO                                                                              |
-| --------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Offical | P99 latency of Mutating API calls (including POST, PUT, DELETE, PATCH) to a single resource object in the last 5 minutes | P99 <= 1s                                                                        |
-| Offical | P99 latency of non-streaming read-only API calls (including GET and LIST) in the last 5 minutes                          | Scope=resource, P99 <= 1s, Scope=namespace, P99 <= 5s, Scope=cluster, P99 <= 30s |
+| Status  | SLI                                                                                                                      | SLO                                                                           |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- |-------------------------------------------------------------------------------|
+| Offical | P99 latency of Mutating API calls (including POST, PUT, DELETE, PATCH) to a single resource object in the last 5 minutes | P99 <= 1s                                                                     |
+| Offical | P99 latency of non-streaming read-only API calls (including GET and LIST) in the last 5 minutes                          | (a)Scope=resource, P99 <= 1s, (b)Scope=namespace or Scope=cluster, P99 <= 30s |
 
 2. Resource Distribution Latency
 
@@ -87,7 +88,7 @@ With reference to the SLI (Service Level Indicator)/SLO (Service Level Objective
 1. The metrics measured do not account for network fluctuations between the control plane and member clusters. Also, Intra-cluster SLOs are not taken into account.
 2. Resource Usage is a very important indicator of a multi-cluster system, but the service capabilities provided by each system are different, so the resource requirements are also different. We do not make hard constraints here.
 3. Cluster Register Latency contains the time from when the cluster is registered in the control plane to when the cluster becomes available.
-   It relies on how the control plane obtains the status of the cluster. 
+   It relies on how the control plane obtains the status of the cluster.
 
 # Test Tools
 
@@ -223,6 +224,103 @@ Disk /dev/vda: 200 GiB, 214748364800 bytes, 419430400 sectors
 
 ## Test Execution
 
+Before using ClusterLoader2 to perform the performance test, we defined the test policy using the configuration file. The configuration file we used can be obtained here:
+
+<details>
+
+<summary>unfold me to see the yaml</summary>
+
+```yaml
+name: test
+
+namespace:
+   number: 10
+
+tuningSets:
+   - name: Uniformtinyqps
+     qpsLoad:
+        qps: 0.1
+   - name: Uniform1qps
+     qpsLoad:
+        qps: 1
+
+steps:
+   - name: Create deployment
+     phases:
+        - namespaceRange:
+             min: 1
+             max: 10
+          replicasPerNamespace: 20
+          tuningSet: Uniformtinyqps
+          objectBundle:
+             - basename: test-deployment
+               objectTemplatePath: "deployment.yaml"
+               templateFillMap:
+                  Replicas: 1000
+        - namespaceRange:
+             min: 1
+             max: 10
+          replicasPerNamespace: 1
+          tuningSet: Uniform1qps
+          objectBundle:
+             - basename: test-policy
+               objectTemplatePath: "policy.yaml"
+```
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Name}}
+  labels:
+    group: test-deployment
+spec:
+  replicas: {{.Replicas}}
+  selector:
+    matchLabels:
+      app: fake-pod
+  template:
+    metadata:
+      labels:
+        app: fake-pod
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: type
+                    operator: In
+                    values:
+                      - fake-kubelet
+      tolerations: 
+          - key: "fake-kubelet/provider"
+            operator: "Exists"
+            effect: "NoSchedule"
+      containers:
+        - image: fake-pod
+          name: {{.Name}}
+```
+
+```yaml
+# policy.yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: test
+spec:
+  resourceSelectors:
+    - apiVersion: apps/v1
+      kind: Deployment
+  placement:
+    replicaScheduling:
+      replicaDivisionPreference: Weighted
+      replicaSchedulingType: Divided
+```
+
+</details>
+
 The following table describes the detailed Kubernetes resource configurations:
 
 
@@ -230,6 +328,7 @@ The following table describes the detailed Kubernetes resource configurations:
 | ---------------------------------- | --------------- |
 | Number of Clusters               | 100           |
 | Number of Pods                   | 2000000       |
+| Number of Nodes per Cluster      | 5000          |
 | Number of Pods per Cluster       | 20000         |
 | Number of Namespaces per Cluster | 20            |
 | Number of Pods per Namespace     | 1000          |
@@ -257,9 +356,9 @@ APIResponsivenessPrometheus:
 Cluster register latency:
 
 
-| metric           | P50(ms) | P90(ms) | P99(ms) | SLO  |
-| ------------------ | --------- | --------- | --------- | ------ |
-| cluster_register | 5356    | 6125    | 6904    | N/A  |
+| metric           | P50(ms) | P90(ms) | P99(ms) | SLO |
+| ------------------ | --------- | --------- | --------- | ----- |
+| cluster_register | 5356    | 6125    | 6904    | N/A |
 
 **Note**: Karmada's Pull deployment mode is suitable for private cloud Kubernetes scenarios. Compared with Push mode, there is a component named karmada-agent running on the member cluster side. It will pull the user-submitted application and run it locally.
 In the process of pull mode cluster registration, it will include the installation time of Karmada-agent in the member cluster. When the image of karmada-agent is ready, it will depend on the latency of Pod startup within a single cluster.
@@ -267,9 +366,10 @@ This article does not describe much of this indicator in pull mode.
 
 Resource Distribution Latency:
 
-| metric                | P50(ms) | P90(ms) | P99(ms) | SLO  |
-| ----------------------- | --------- | --------- | --------- | ------ |
-| cluster_schedule | 12     | 15     | 32    | N/A |
+
+| metric                      | P50(ms) | P90(ms) | P99(ms) | SLO  |
+| ----------------------------- | --------- | --------- | --------- | ------ |
+| cluster_schedule            | 12      | 15      | 32      | N/A  |
 | resource_distribution(Push) | 706     | 899     | 1298    | 2000 |
 | resource_distribution(Pull) | 612     | 881     | 989     | 2000 |
 
@@ -305,14 +405,14 @@ Karmada-agent in the member cluster with 5k Node and 2w Pod costs 40m CPU(cores)
 
 ## Conclusion and Analysis
 
-From the preceding test results, the API call latency and resource distribute latency meet the SLIs/SLOs above. And the resources consumed by the system during the whole process are in a controllable range. 
+From the preceding test results, the API call latency and resource distribute latency meet the SLIs/SLOs above. And the resources consumed by the system during the whole process are in a controllable range.
 Therefore, **Karmada can stably support 100 clusters with 500000 nodes and more than two million pods**. In production, Karmada effectively supports the management of hundreds of huge clusters.
 Next, we will analyze the data of each indicator in detail.
 
 ### Separation of Concerns: Resource Template and Policies
 
 Karmada uses Kubernetes Native API definition for federated resource template and reusable Policy API for cluster scheduling strategy. It not only make it integrate with existing tools that already adopt on Kubernetes, but also greatly reduces the number of resources on the control plane.
-Based on this, the number of resources for the control plane does not depend on how many clusters on the control plane, but depends on numbers of multi-cluster applications. 
+Based on this, the number of resources for the control plane does not depend on how many clusters on the control plane, but depends on numbers of multi-cluster applications.
 
 Karmada's arthrecture inherits the simplicity and scalability of Kubernetes. Karmada-apiserver as the entry point of the control plane is like kube-apiserver in Kubernetes. You can optimize usage in multi-cluster environments using the parameters you need in single cluster configuration.
 
@@ -323,7 +423,7 @@ During the entire resource distribution process, API call latency is within a re
 In Karmada 1.3, we provides the ability to register Pull mode clusters based on Bootstrap tokens, which not only simplifies the cluster registration process, but also facilitates access control.
 Now whether it is Push mode or Pull mode, we both can use the karmadactl cli to complete the cluster registration. Compared with Push mode, there is a component named karmada-agent running on the member cluster side.
 
-Cluster registry latency above contains the delay for the control plane to successfully collect the member cluster status. In the process of cluster life cycle management, Karmada will collect cluster version, API enablement and whether the cluster is online or healthy. 
+Cluster registry latency above contains the delay for the control plane to successfully collect the member cluster status. In the process of cluster life cycle management, Karmada will collect cluster version, API enablement and whether the cluster is online or healthy.
 Besides, Karmada will get the resource usage of the cluster to model the cluster so that the scheduler can better compute the target cluster. In this case, cluster registry latency depends on the size of the cluster.
 This article shows the latency of joining a 5,000-node cluster until it is ready. You can [disable cluster resource modeling](https://karmada.io/docs/next/userguide/scheduling/cluster-resources#disable-cluster-resource-modeling) so cluster registry latency will be independent of cluster size and less than 2000ms.
 
@@ -334,23 +434,31 @@ Also, you may adjust `--concurrent-work-syncs` parameter to improve performance.
 ### Resource Usage between Push mode and Pull mode
 
 In Karmada 1.3, we do a lot of work to reduce Karmada's resource consumption when managing huge clusters. Now we are happy to announce that compared with version 1.2, Karmada 1.3 reduces memory consumption by **85%** and CPU consumption by **32%** in large-scale scenarios.
+In general, Pull Mode has a clear advantage in memory usage, and the rest of the resources are similar.
 
 In Push mode, the main resource consumption of the control plane is concentrated on the karmada-controller-manager. And karmada-apiserver is not under much pressure.
 
 ![push apiserver qps](push_apiserver_qps.png)
 
-From the qps of karmada-apiserver and the request latency of karmada-etcd, we can know that the number of requests to karmada-apiserver is kept at a low level.  
+From the qps of karmada-apiserver and the request latency of karmada-etcd, we can know that the number of requests to karmada-apiserver is kept at a low level.
 In Push mode, all requests come from karmada-controller-manager on the control plane.  You can configure `--kube-api-qps` and `--kube-api-burst` in karmada-controller-manager to control requests within a certain threshold.
 
 In Pull mode, the main resource consumption of the control plane is concentrated on the karmada-apiserver instead of karmada-controller-manager.
 
 ![pull apiserver qps](pull_apiserver_qps.png)
 
-From the qps of karmada-apiserver and the request latency of karmada-etcd, we can know that the number of requests to karmada-apiserver is kept at a high level.  
-In Pull mode, karmada-agent of each member cluster needs to maintain a long connection with karmada-apiserver. 
+From the qps of karmada-apiserver and the request latency of karmada-etcd, we can know that the number of requests to karmada-apiserver is kept at a high level.
+In Pull mode, karmada-agent of each member cluster needs to maintain a long connection with karmada-apiserver.
 We can easily conclude that the number of requests for karmada-apiserver will be N times that of configuration in karmada-agent(N=#Num of clusters).
 Therefore, in the scenario of large-scale management of Pull mode clusters, we recommand increasing the `--max-requests-inflight`, `--max-mutating-requests-inflight` in karmada-apiserver and `--quota-backend-bytes` in karmada-etcd to improve the capacity of the control plane.
 
-Now karmada provide the ability named [cluster resource modeling](https://karmada.io/docs/next/userguide/scheduling/cluster-resources) to make scheduling decisions in scenario of dynamic replica assignment based on cluster free resources. 
+Now Karmada provides the ability named [cluster resource modeling](https://karmada.io/docs/next/userguide/scheduling/cluster-resources) to make scheduling decisions in scenario of dynamic replica assignment based on cluster free resources.
 In the process of resource modeling, it will collect node and pod information from all clusters managed by Karmada. This imposes a considerable performance burden in large-scale scenarios.
 If you do not use this ability, you can [disable cluster resource modeling](https://karmada.io/docs/next/userguide/scheduling/cluster-resources#disable-cluster-resource-modeling) to further reduce resource consumption.
+
+### Summary
+
+In terms of usage scenarios, push mode is suitable for managing Kubernetes clusters on public clouds, while pull mode covers private cloud and edge-related scenarios compared to push mode. In terms of performance and security, the overall performance of the pull mode is better than that of the push mode. 
+Each cluster is managed by the karmada-agent component in the cluster and is completely isolated.
+However, while the pull mode improves performance, it also needs to correspondingly improve the performance of karmada-apiserver and karmada-etcd to face challenges in high-traffic and high-concurrency scenarios. For specific methods, please refer to the optimization of kubernetes for large-scale clusters.
+In general, users can choose different deployment modes according to usage scenarios to improve the performance of the entire multi-cluster system through parameter tuning and other means.
