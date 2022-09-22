@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -86,6 +88,9 @@ func NewCmdInit(parentCommand string) *cobra.Command {
 				}
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupClusterRegistration,
 		},
 	}
 	flags := cmd.Flags()

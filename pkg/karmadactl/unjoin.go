@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	util2 "github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -57,6 +59,9 @@ func NewCmdUnjoin(karmadaConfig KarmadaConfig, parentCommand string) *cobra.Comm
 				return err
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util2.TagCommandGroup: util2.GroupClusterRegistration,
 		},
 	}
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
@@ -73,6 +75,9 @@ func NewCmdTaint(karmadaConfig KarmadaConfig, parentCommand string) *cobra.Comma
 				return err
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupClusterManagement,
 		},
 	}
 

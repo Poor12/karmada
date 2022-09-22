@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -63,6 +65,9 @@ func NewCmdToken(karmadaConfig KarmadaConfig, parentCommand string, streams gene
 		Short:   "Manage bootstrap tokens",
 		Long:    tokenLong,
 		Example: fmt.Sprintf(tokenExamples, parentCommand),
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupClusterRegistration,
+		},
 	}
 
 	cmd.AddCommand(NewCmdTokenCreate(karmadaConfig, streams.Out, opts))

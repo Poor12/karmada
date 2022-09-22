@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -146,6 +148,9 @@ func NewCmdRegister(parentCommand string) *cobra.Command {
 				return err
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupClusterRegistration,
 		},
 	}
 	flags := cmd.Flags()

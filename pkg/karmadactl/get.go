@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -103,6 +105,9 @@ func NewCmdGet(karmadaConfig KarmadaConfig, parentCommand string, streams generi
 				return err
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupBasic,
 		},
 	}
 

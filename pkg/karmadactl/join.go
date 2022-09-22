@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	util2 "github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -49,6 +51,9 @@ func NewCmdJoin(karmadaConfig KarmadaConfig, parentCommand string) *cobra.Comman
 				return err
 			}
 			return nil
+		},
+		Annotations: map[string]string{
+			util2.TagCommandGroup: util2.GroupClusterRegistration,
 		},
 	}
 

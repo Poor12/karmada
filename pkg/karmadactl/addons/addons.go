@@ -3,6 +3,8 @@ package addons
 import (
 	"fmt"
 
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 
@@ -27,6 +29,9 @@ func NewCommandAddons(parentCommand string) *cobra.Command {
 		Short:   "Enable or disable a Karmada addon",
 		Long:    "Enable or disable a Karmada addon",
 		Example: fmt.Sprintf(addonsExamples, parentCommand),
+		Annotations: map[string]string{
+			util.TagCommandGroup: util.GroupClusterRegistration,
+		},
 	}
 
 	addonsParentCommand := fmt.Sprintf("%s %s", parentCommand, "addons")
