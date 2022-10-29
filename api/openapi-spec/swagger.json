@@ -16210,6 +16210,14 @@
         "resource"
       ],
       "properties": {
+        "clusterTolerations": {
+          "description": "ClusterTolerations represents the tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/io.k8s.api.core.v1.Toleration"
+          }
+        },
         "clusters": {
           "description": "Clusters represents target member clusters where the resource to be deployed.",
           "type": "array",

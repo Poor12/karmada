@@ -72,6 +72,10 @@ type ResourceBindingSpec struct {
 	// +optional
 	Clusters []TargetCluster `json:"clusters,omitempty"`
 
+	// ClusterTolerations represents the tolerations.
+	// +optional
+	ClusterTolerations []corev1.Toleration `json:"clusterTolerations,omitempty"`
+	
 	// GracefulEvictionTasks holds the eviction tasks that are expected to perform
 	// the eviction in a graceful way.
 	// The intended workflow is:

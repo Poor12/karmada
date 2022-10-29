@@ -290,6 +290,13 @@ func (in *ResourceBindingSpec) DeepCopyInto(out *ResourceBindingSpec) {
 		*out = make([]TargetCluster, len(*in))
 		copy(*out, *in)
 	}
+	if in.ClusterTolerations != nil {
+		in, out := &in.ClusterTolerations, &out.ClusterTolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.GracefulEvictionTasks != nil {
 		in, out := &in.GracefulEvictionTasks, &out.GracefulEvictionTasks
 		*out = make([]GracefulEvictionTask, len(*in))
