@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
+	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -143,7 +144,7 @@ func (tc *NoExecuteTaintManager) syncBindingEviction(key util.QueueKey) error {
 		return nil
 	}
 
-	needEviction, tolerationTime, err := tc.needEviction(cluster, binding.Annotations)
+	needEviction, tolerationTime, err := tc.needEviction(cluster, binding.Spec.Placement, binding.Annotations)
 	if err != nil {
 		klog.ErrorS(err, "Failed to check if binding needs eviction", "binding", fedKey.ClusterWideKey.NamespaceKey())
 		return err
@@ -192,7 +193,7 @@ func (tc *NoExecuteTaintManager) syncClusterBindingEviction(key util.QueueKey) e
 		return nil
 	}
 
-	needEviction, tolerationTime, err := tc.needEviction(cluster, binding.Annotations)
+	needEviction, tolerationTime, err := tc.needEviction(cluster, binding.Spec.Placement, binding.Annotations)
 	if err != nil {
 		klog.ErrorS(err, "Failed to check if cluster binding needs eviction", "binding", binding.Name)
 		return err
@@ -224,10 +225,14 @@ func (tc *NoExecuteTaintManager) syncClusterBindingEviction(key util.QueueKey) e
 // needEviction returns whether the binding should be evicted from target cluster right now.
 // If a toleration time is found, we return false along with a minimum toleration time as the
 // second return value.
-func (tc *NoExecuteTaintManager) needEviction(clusterName string, appliedPlacement map[string]string) (bool, time.Duration, error) {
-	placement, err := helper.GetAppliedPlacement(appliedPlacement)
-	if err != nil {
-		return false, -1, err
+func (tc *NoExecuteTaintManager) needEviction(clusterName string, placement *policyv1alpha1.Placement, annotations map[string]string) (bool, time.Duration, error) {
+	var err error
+	if placement == nil {
+		klog.Warningf("Placement of resourceBinding is empty, switch to get placement from the annotation.")
+		placement, err = helper.GetAppliedPlacement(annotations)
+		if err != nil {
+			return false, -1, err
+		}
 	}
 
 	cluster := &clusterv1alpha1.Cluster{}

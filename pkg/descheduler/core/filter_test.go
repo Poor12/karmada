@@ -51,14 +51,12 @@ func TestValidatePlacement(t *testing.T) {
 			ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated,
 		},
 	}
-	marshaledBytes1, _ := json.Marshal(fakePlacement1)
 	fakePlacement2 := policyv1alpha1.Placement{
 		ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
 			ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
 			ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceAggregated,
 		},
 	}
-	marshaledBytes2, _ := json.Marshal(fakePlacement2)
 	fakePlacement3 := policyv1alpha1.Placement{
 		ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
 			ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
@@ -66,7 +64,6 @@ func TestValidatePlacement(t *testing.T) {
 			WeightPreference:          &policyv1alpha1.ClusterPreferences{},
 		},
 	}
-	marshaledBytes3, _ := json.Marshal(fakePlacement3)
 	fakePlacement4 := policyv1alpha1.Placement{
 		ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
 			ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
@@ -84,7 +81,7 @@ func TestValidatePlacement(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "no policyPlacementAnnotation",
+			name: "no policyPlacement",
 			binding: &workv1alpha2.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
@@ -97,9 +94,11 @@ func TestValidatePlacement(t *testing.T) {
 			name: "propagationPolicy schedules replicas as non-dynamic",
 			binding: &workv1alpha2.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "foo",
-					Namespace:   "bar",
-					Annotations: map[string]string{util.PolicyPlacementAnnotation: string(marshaledBytes1)},
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: workv1alpha2.ResourceBindingSpec{
+					Placement: &fakePlacement1,
 				},
 			},
 			expected: false,
@@ -108,9 +107,11 @@ func TestValidatePlacement(t *testing.T) {
 			name: "propagationPolicy schedules replicas as dynamic: ReplicaDivisionPreference is Aggregated",
 			binding: &workv1alpha2.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "foo",
-					Namespace:   "bar",
-					Annotations: map[string]string{util.PolicyPlacementAnnotation: string(marshaledBytes2)},
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: workv1alpha2.ResourceBindingSpec{
+					Placement: &fakePlacement2,
 				},
 			},
 			expected: true,
@@ -119,15 +120,30 @@ func TestValidatePlacement(t *testing.T) {
 			name: "propagationPolicy schedules replicas as dynamic: DynamicWeight is null",
 			binding: &workv1alpha2.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "foo",
-					Namespace:   "bar",
-					Annotations: map[string]string{util.PolicyPlacementAnnotation: string(marshaledBytes3)},
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: workv1alpha2.ResourceBindingSpec{
+					Placement: &fakePlacement3,
 				},
 			},
 			expected: false,
 		},
 		{
 			name: "propagationPolicy schedules replicas as dynamic: DynamicWeight is not null",
+			binding: &workv1alpha2.ResourceBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: workv1alpha2.ResourceBindingSpec{
+					Placement: &fakePlacement4,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "spec.placement is empty and propagationPolicy schedules replicas as dynamic: DynamicWeight is not null",
 			binding: &workv1alpha2.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "foo",

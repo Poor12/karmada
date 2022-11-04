@@ -462,7 +462,7 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 		policyv1alpha1.PropagationPolicyNameLabel:      policy.GetName(),
 	}
 
-	binding, err := d.BuildResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps)
+	binding, err := d.BuildResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps, &policy.Spec.Placement)
 	if err != nil {
 		klog.Errorf("Failed to build resourceBinding for object: %s. error: %v", objectKey, err)
 		return err
@@ -478,6 +478,7 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 			bindingCopy.Spec.ReplicaRequirements = binding.Spec.ReplicaRequirements
 			bindingCopy.Spec.Replicas = binding.Spec.Replicas
 			bindingCopy.Spec.PropagateDeps = binding.Spec.PropagateDeps
+			bindingCopy.Spec.Placement = binding.Spec.Placement
 			return nil
 		})
 		if err != nil {
@@ -526,7 +527,7 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 	// For namespace-scoped resources, which namespace is not empty, building `ResourceBinding`.
 	// For cluster-scoped resources, which namespace is empty, building `ClusterResourceBinding`.
 	if object.GetNamespace() != "" {
-		binding, err := d.BuildResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps)
+		binding, err := d.BuildResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps, &policy.Spec.Placement)
 		if err != nil {
 			klog.Errorf("Failed to build resourceBinding for object: %s. error: %v", objectKey, err)
 			return err
@@ -541,6 +542,7 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 				bindingCopy.Spec.Resource = binding.Spec.Resource
 				bindingCopy.Spec.ReplicaRequirements = binding.Spec.ReplicaRequirements
 				bindingCopy.Spec.Replicas = binding.Spec.Replicas
+				bindingCopy.Spec.Placement = binding.Spec.Placement
 				return nil
 			})
 			if err != nil {
@@ -562,7 +564,7 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 			klog.V(2).Infof("ResourceBinding(%s) is up to date.", binding.GetName())
 		}
 	} else {
-		binding, err := d.BuildClusterResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps)
+		binding, err := d.BuildClusterResourceBinding(object, objectKey, policyLabels, policy.Spec.PropagateDeps, &policy.Spec.Placement)
 		if err != nil {
 			klog.Errorf("Failed to build clusterResourceBinding for object: %s. error: %v", objectKey, err)
 			return err
@@ -576,6 +578,7 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 			bindingCopy.Spec.Resource = binding.Spec.Resource
 			bindingCopy.Spec.ReplicaRequirements = binding.Spec.ReplicaRequirements
 			bindingCopy.Spec.Replicas = binding.Spec.Replicas
+			bindingCopy.Spec.Placement = binding.Spec.Placement
 			return nil
 		})
 		if err != nil {
@@ -669,7 +672,7 @@ func (d *ResourceDetector) ClaimClusterPolicyForObject(object *unstructured.Unst
 }
 
 // BuildResourceBinding builds a desired ResourceBinding for object.
-func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructured, objectKey keys.ClusterWideKey, labels map[string]string, propagateDeps bool) (*workv1alpha2.ResourceBinding, error) {
+func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructured, objectKey keys.ClusterWideKey, labels map[string]string, propagateDeps bool, placement *policyv1alpha1.Placement) (*workv1alpha2.ResourceBinding, error) {
 	bindingName := names.GenerateBindingName(object.GetKind(), object.GetName())
 	propagationBinding := &workv1alpha2.ResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -683,6 +686,7 @@ func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructure
 		},
 		Spec: workv1alpha2.ResourceBindingSpec{
 			PropagateDeps: propagateDeps,
+			Placement:     placement,
 			Resource: workv1alpha2.ObjectReference{
 				APIVersion:      object.GetAPIVersion(),
 				Kind:            object.GetKind(),
@@ -708,7 +712,7 @@ func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructure
 }
 
 // BuildClusterResourceBinding builds a desired ClusterResourceBinding for object.
-func (d *ResourceDetector) BuildClusterResourceBinding(object *unstructured.Unstructured, objectKey keys.ClusterWideKey, labels map[string]string, propagateDeps bool) (*workv1alpha2.ClusterResourceBinding, error) {
+func (d *ResourceDetector) BuildClusterResourceBinding(object *unstructured.Unstructured, objectKey keys.ClusterWideKey, labels map[string]string, propagateDeps bool, placement *policyv1alpha1.Placement) (*workv1alpha2.ClusterResourceBinding, error) {
 	bindingName := names.GenerateBindingName(object.GetKind(), object.GetName())
 	binding := &workv1alpha2.ClusterResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -721,6 +725,7 @@ func (d *ResourceDetector) BuildClusterResourceBinding(object *unstructured.Unst
 		},
 		Spec: workv1alpha2.ResourceBindingSpec{
 			PropagateDeps: propagateDeps,
+			Placement:     placement,
 			Resource: workv1alpha2.ObjectReference{
 				APIVersion:      object.GetAPIVersion(),
 				Kind:            object.GetKind(),
