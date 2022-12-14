@@ -228,6 +228,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 	}
 	sched.enableEmptyWorkloadPropagation = options.enableEmptyWorkloadPropagation
 
+	metrics.Register()
 	sched.addAllEventHandlers()
 	return sched, nil
 }

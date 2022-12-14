@@ -3,7 +3,7 @@ package runtime
 import (
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	basemetrics "k8s.io/component-base/metrics"
 
 	"github.com/karmada-io/karmada/pkg/scheduler/framework"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
@@ -12,7 +12,7 @@ import (
 // frameworkMetric is the data structure passed in the buffer channel between the main framework thread
 // and the metricsRecorder goroutine.
 type frameworkMetric struct {
-	metric      *prometheus.HistogramVec
+	metric      *basemetrics.HistogramVec
 	labelValues []string
 	value       float64
 }

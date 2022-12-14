@@ -9,7 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/component-base/metrics/legacyregistry"
+
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/dynamic"
@@ -197,7 +198,7 @@ func serveHealthzAndMetrics(address string) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metrics", legacyregistry.HandlerWithReset())
 	httpServer := http.Server{
 		Addr:              address,
 		Handler:           mux,
