@@ -9,11 +9,12 @@ import (
 	_ "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/karmada-io/karmada/cmd/scheduler/app"
+	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/testfilter"
 )
 
 func main() {
 	stopChan := controllerruntime.SetupSignalHandler().Done()
-	command := app.NewSchedulerCommand(stopChan)
+	command := app.NewSchedulerCommand(stopChan, app.WithPlugin(testfilter.Name, testfilter.New))
 	code := cli.Run(command)
 	os.Exit(code)
 }
