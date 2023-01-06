@@ -32,8 +32,11 @@ func (s *Scheduler) addAllEventHandlers() {
 	})
 
 	policyInformer := s.informerFactory.Policy().V1alpha1().PropagationPolicies().Informer()
-	policyInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: s.onPropagationPolicyUpdate,
+	policyInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: s.policyEventFilter,
+		Handler: cache.ResourceEventHandlerFuncs{
+			UpdateFunc: s.onPropagationPolicyUpdate,
+		},
 	})
 
 	clusterBindingInformer := s.informerFactory.Work().V1alpha2().ClusterResourceBindings().Informer()
@@ -46,8 +49,11 @@ func (s *Scheduler) addAllEventHandlers() {
 	})
 
 	clusterPolicyInformer := s.informerFactory.Policy().V1alpha1().ClusterPropagationPolicies().Informer()
-	clusterPolicyInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: s.onClusterPropagationPolicyUpdate,
+	clusterPolicyInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: s.policyEventFilter,
+		Handler: cache.ResourceEventHandlerFuncs{
+			UpdateFunc: s.onClusterPropagationPolicyUpdate,
+		},
 	})
 
 	memClusterInformer := s.informerFactory.Cluster().V1alpha1().Clusters().Informer()
@@ -77,8 +83,30 @@ func (s *Scheduler) resourceBindingEventFilter(obj interface{}) bool {
 		return false
 	}
 
+	switch t := obj.(type) {
+	case *workv1alpha2.ResourceBinding:
+		if !schedulerNameFilter(s.schedulerName, t.Spec.SchedulerName) {
+			return false
+		}
+	case *workv1alpha2.ClusterResourceBinding:
+		if !schedulerNameFilter(s.schedulerName, t.Spec.SchedulerName) {
+			return false
+		}
+	}
+
 	return util.GetLabelValue(accessor.GetLabels(), policyv1alpha1.PropagationPolicyNameLabel) != "" ||
 		util.GetLabelValue(accessor.GetLabels(), policyv1alpha1.ClusterPropagationPolicyLabel) != ""
+}
+
+func (s *Scheduler) policyEventFilter(obj interface{}) bool {
+	switch t := obj.(type) {
+	case *policyv1alpha1.PropagationPolicy:
+		return schedulerNameFilter(s.schedulerName, t.Spec.SchedulerName)
+	case *policyv1alpha1.ClusterPropagationPolicy:
+		return schedulerNameFilter(s.schedulerName, t.Spec.SchedulerName)
+	}
+
+	return true
 }
 
 func (s *Scheduler) onResourceBindingAdd(obj interface{}) {
@@ -311,4 +339,12 @@ func (s *Scheduler) deleteCluster(obj interface{}) {
 	if s.enableSchedulerEstimator {
 		s.schedulerEstimatorWorker.Add(cluster.Name)
 	}
+}
+
+func schedulerNameFilter(schedulerNameFromOptions, schedulerName string) bool {
+	if schedulerName == "" {
+		schedulerName = DefaultScheduler
+	}
+
+	return schedulerNameFromOptions == schedulerName
 }

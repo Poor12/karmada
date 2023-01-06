@@ -564,6 +564,11 @@ spec:
                 - kind
                 - name
                 type: object
+              schedulerName:
+                description: SchedulerName represents which scheduler to proceed the
+                  scheduling. The value is derived from 'SchedulerName' in the applied
+                  propagation policy.
+                type: string
             required:
             - resource
             type: object

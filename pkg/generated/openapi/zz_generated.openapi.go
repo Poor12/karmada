@@ -5229,6 +5229,13 @@ func schema_pkg_apis_work_v1alpha2_ResourceBindingSpec(ref common.ReferenceCallb
 							},
 						},
 					},
+					"schedulerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SchedulerName represents which scheduler to proceed the scheduling. The value is derived from 'SchedulerName' in the applied propagation policy.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"resource"},
 			},
