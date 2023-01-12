@@ -26,6 +26,7 @@ func getAllDefaultDependenciesInterpreter() map[schema.GroupVersionKind]dependen
 	s[corev1.SchemeGroupVersion.WithKind(util.PodKind)] = getPodDependencies
 	s[appsv1.SchemeGroupVersion.WithKind(util.DaemonSetKind)] = getDaemonSetDependencies
 	s[appsv1.SchemeGroupVersion.WithKind(util.StatefulSetKind)] = getStatefulSetDependencies
+	s[appsv1.SchemeGroupVersion.WithKind(util.PersistentVolumeClaimKind)] = getPersistentVolumeClaimDependencies
 	return s
 }
 
@@ -41,6 +42,25 @@ func getDeploymentDependencies(object *unstructured.Unstructured) ([]configv1alp
 	}
 
 	return getDependenciesFromPodTemplate(podObj)
+}
+
+func getPersistentVolumeClaimDependencies(object *unstructured.Unstructured) ([]configv1alpha1.DependentObjectReference, error) {
+	persistentVolumeClaimObj := &corev1.PersistentVolumeClaim{}
+	if err := helper.ConvertToTypedObject(object, persistentVolumeClaimObj); err != nil {
+		return nil, fmt.Errorf("failed to convert PersistentVolumeClaim from unstructured object: %v", err)
+	}
+
+	dependentPV := persistentVolumeClaimObj.Spec.VolumeName
+	var dependentObjectRefs []configv1alpha1.DependentObjectReference
+	if dependentPV != "" {
+		dependentObjectRefs = append(dependentObjectRefs, configv1alpha1.DependentObjectReference{
+			APIVersion: "v1",
+			Kind:       "PersistentVolume",
+			Name:       dependentPV,
+		})
+	}
+
+	return dependentObjectRefs, nil
 }
 
 func getJobDependencies(object *unstructured.Unstructured) ([]configv1alpha1.DependentObjectReference, error) {
