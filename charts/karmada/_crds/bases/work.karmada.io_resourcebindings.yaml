@@ -264,6 +264,23 @@ spec:
                   - name
                   type: object
                 type: array
+              evictedClusters:
+                description: EvictedClusters represents the evicted clusters.
+                items:
+                  properties:
+                    creationTimestamp:
+                      description: "CreationTimestamp is a timestamp representing
+                        the server time when this object was created. Clients should
+                        not set this value to avoid the time inconsistency issue.
+                        It is represented in RFC3339 form(like '2021-04-25T10:02:10Z')
+                        and is in UTC. \n Populated by the system. Read-only."
+                      format: date-time
+                      type: string
+                    name:
+                      description: Name represents the evicted cluster name.
+                      type: string
+                  type: object
+                type: array
               gracefulEvictionTasks:
                 description: 'GracefulEvictionTasks holds the eviction tasks that
                   are expected to perform the eviction in a graceful way. The intended

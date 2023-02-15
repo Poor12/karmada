@@ -125,6 +125,7 @@ type Options struct {
 	// in scenario of dynamic replica assignment based on cluster free resources.
 	// Disable if it does not fit your cases for better performance.
 	EnableClusterResourceModeling bool
+	UnHealthyTolerationTimeout    metav1.Duration
 }
 
 // NewOptions builds an empty options.
@@ -206,6 +207,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet, allControllers, disabledByDefau
 	flags.BoolVar(&o.EnableClusterResourceModeling, "enable-cluster-resource-modeling", true, "Enable means controller would build resource modeling for each cluster by syncing Nodes and Pods resources.\n"+
 		"The resource modeling might be used by the scheduler to make scheduling decisions in scenario of dynamic replica assignment based on cluster free resources.\n"+
 		"Disable if it does not fit your cases for better performance.")
+	flags.DurationVar(&o.UnHealthyTolerationTimeout.Duration, "unhealthy-toleration-timeout", 3*time.Second, "Specifies the timeout period for health-controller.")
 
 	o.RateLimiterOpts.AddFlags(flags)
 	o.ProfileOpts.AddFlags(flags)

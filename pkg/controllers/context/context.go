@@ -78,6 +78,7 @@ type Options struct {
 	CertRotationRemainingTimeThreshold float64
 	// KarmadaKubeconfigNamespace is the namespace of the secret containing karmada-agent certificate.
 	KarmadaKubeconfigNamespace string
+	UnHealthyTolerationTimeout metav1.Duration
 }
 
 // Context defines the context object for controller.

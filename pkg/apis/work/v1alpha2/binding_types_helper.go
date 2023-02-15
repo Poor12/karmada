@@ -72,3 +72,14 @@ func (s *ResourceBindingSpec) GracefulEvictCluster(name, producer, reason, messa
 	s.GracefulEvictionTasks = append(s.GracefulEvictionTasks, evictionTask)
 	s.Clusters = append(s.Clusters[:i], s.Clusters[i+1:]...)
 }
+
+//// AddEvictedCluster adds specific cluster to `EvictedClusters`.
+//func (s *ResourceBindingSpec) AddEvictedCluster(name string) {
+//	for _, cluster := range s.EvictedClusters {
+//		if cluster.Name == name {
+//			return
+//		}
+//	}
+//
+//	s.EvictedClusters = append(s.EvictedClusters, EvictedCluster{Name: name, CreationTimestamp: metav1.Now()})
+//}

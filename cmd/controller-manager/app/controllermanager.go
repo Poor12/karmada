@@ -35,6 +35,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/controllers/execution"
 	"github.com/karmada-io/karmada/pkg/controllers/federatedresourcequota"
 	"github.com/karmada-io/karmada/pkg/controllers/gracefuleviction"
+	"github.com/karmada-io/karmada/pkg/controllers/health"
 	"github.com/karmada-io/karmada/pkg/controllers/hpa"
 	"github.com/karmada-io/karmada/pkg/controllers/mcs"
 	"github.com/karmada-io/karmada/pkg/controllers/namespace"
@@ -194,6 +195,7 @@ func init() {
 	controllers["federatedResourceQuotaSync"] = startFederatedResourceQuotaSyncController
 	controllers["federatedResourceQuotaStatus"] = startFederatedResourceQuotaStatusController
 	controllers["gracefulEviction"] = startGracefulEvictionController
+	controllers["health"] = startHealthController
 }
 
 func startClusterController(ctx controllerscontext.Context) (enabled bool, err error) {
@@ -499,6 +501,18 @@ func startGracefulEvictionController(ctx controllerscontext.Context) (enabled bo
 	return false, nil
 }
 
+func startHealthController(ctx controllerscontext.Context) (enabled bool, err error) {
+	controller := health.HealthController{
+		Client:                     ctx.Mgr.GetClient(),
+		EventRecorder:              ctx.Mgr.GetEventRecorderFor(health.HealthControllerName),
+		UnHealthyTolerationTimeout: ctx.Opts.UnHealthyTolerationTimeout.Duration,
+	}
+	if err = controller.SetupWithManager(ctx.Mgr); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // setupControllers initialize controllers and setup one by one.
 func setupControllers(mgr controllerruntime.Manager, opts *options.Options, stopChan <-chan struct{}) {
 	restConfig := mgr.GetConfig()
@@ -581,6 +595,7 @@ func setupControllers(mgr controllerruntime.Manager, opts *options.Options, stop
 			RateLimiterOptions:                opts.RateLimiterOpts,
 			GracefulEvictionTimeout:           opts.GracefulEvictionTimeout,
 			EnableClusterResourceModeling:     opts.EnableClusterResourceModeling,
+			UnHealthyTolerationTimeout:        opts.UnHealthyTolerationTimeout,
 		},
 		StopChan:                    stopChan,
 		DynamicClientSet:            dynamicClientSet,
