@@ -57,6 +57,11 @@ func assessSingleTask(task workv1alpha2.GracefulEvictionTask, opt assessmentOpti
 		return nil
 	}
 
+	for _, cluster := range opt.scheduleResult {
+		if task.FromCluster == cluster.Name {
+			return nil
+		}
+	}
 	return &task
 }
 

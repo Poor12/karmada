@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	pkgclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
@@ -22,7 +22,7 @@ import (
 )
 
 // CreateOrUpdateWork creates a Work object if not exist, or updates if it already exist.
-func CreateOrUpdateWork(client client.Client, workMeta metav1.ObjectMeta, resource *unstructured.Unstructured) error {
+func CreateOrUpdateWork(client pkgclient.Client, workMeta metav1.ObjectMeta, resource *unstructured.Unstructured) error {
 	workload := resource.DeepCopy()
 	util.MergeAnnotation(workload, workv1alpha2.ResourceTemplateUIDAnnotation, string(workload.GetUID()))
 	util.RecordManagedAnnotations(workload)
@@ -67,6 +67,12 @@ func CreateOrUpdateWork(client client.Client, workMeta metav1.ObjectMeta, resour
 		return err
 	}
 
+	key := pkgclient.ObjectKeyFromObject(runtimeObject)
+	err = client.Get(context.TODO(), key, runtimeObject)
+	if err != nil || !runtimeObject.DeletionTimestamp.IsZero() {
+		return fmt.Errorf("failed to get work %s/%s", runtimeObject.GetNamespace(), runtimeObject.GetName())
+	}
+
 	if operationResult == controllerutil.OperationResultCreated {
 		klog.V(2).Infof("Create work %s/%s successfully.", work.GetNamespace(), work.GetName())
 	} else if operationResult == controllerutil.OperationResultUpdated {
@@ -79,15 +85,15 @@ func CreateOrUpdateWork(client client.Client, workMeta metav1.ObjectMeta, resour
 }
 
 // GetWorksByLabelsSet get WorkList by matching labels.Set.
-func GetWorksByLabelsSet(c client.Client, ls labels.Set) (*workv1alpha1.WorkList, error) {
+func GetWorksByLabelsSet(c pkgclient.Client, ls labels.Set) (*workv1alpha1.WorkList, error) {
 	workList := &workv1alpha1.WorkList{}
-	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(ls)}
+	listOpt := &pkgclient.ListOptions{LabelSelector: labels.SelectorFromSet(ls)}
 
 	return workList, c.List(context.TODO(), workList, listOpt)
 }
 
 // GetWorksByBindingNamespaceName get WorkList by matching same Namespace and same Name.
-func GetWorksByBindingNamespaceName(c client.Client, bindingNamespace, bindingName string) (*workv1alpha1.WorkList, error) {
+func GetWorksByBindingNamespaceName(c pkgclient.Client, bindingNamespace, bindingName string) (*workv1alpha1.WorkList, error) {
 	referenceKey := names.GenerateBindingReferenceKey(bindingNamespace, bindingName)
 	var ls labels.Set
 	if bindingNamespace != "" {
