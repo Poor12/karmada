@@ -23,7 +23,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ $name }}-aggregated-apiserver
-  namespace: {{ include "karmada.namespace" . }}
+  namespace: karmada-system
 spec:
   type: ExternalName
   externalName: {{ $name }}-aggregated-apiserver.{{ include "karmada.namespace" . }}.svc.{{ .Values.clusterDomain }}
@@ -51,7 +51,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ $name }}-search
-  namespace: {{ include "karmada.namespace" . }}
+  namespace: karmada-system
 spec:
   type: ExternalName
   externalName: {{ $name }}-search.{{ include "karmada.namespace" . }}.svc.{{ .Values.clusterDomain }}
