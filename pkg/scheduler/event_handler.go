@@ -1,6 +1,10 @@
 package scheduler
 
 import (
+	"reflect"
+
+	"github.com/karmada-io/karmada/pkg/scheduler/framework"
+	"github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -9,6 +13,7 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -47,22 +52,22 @@ func (s *Scheduler) addAllEventHandlers() {
 		klog.Errorf("Failed to add handlers for ClusterResourceBindings: %v", err)
 	}
 
-	memClusterInformer := s.informerFactory.Cluster().V1alpha1().Clusters().Informer()
-	_, err = memClusterInformer.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    s.addCluster,
-			UpdateFunc: s.updateCluster,
-			DeleteFunc: s.deleteCluster,
-		},
-	)
-	if err != nil {
-		klog.Errorf("Failed to add handlers for Clusters: %v", err)
-	}
+	//memClusterInformer := s.informerFactory.Cluster().V1alpha1().Clusters().Informer()
+	//_, err = memClusterInformer.AddEventHandler(
+	//	cache.ResourceEventHandlerFuncs{
+	//		AddFunc:    s.addCluster,
+	//		UpdateFunc: s.updateCluster,
+	//		DeleteFunc: s.deleteCluster,
+	//	},
+	//)
+	//if err != nil {
+	//	klog.Errorf("Failed to add handlers for Clusters: %v", err)
+	//}
 
 	// ignore the error here because the informers haven't been started
 	_ = bindingInformer.SetTransform(fedinformer.StripUnusedFields)
 	_ = clusterBindingInformer.SetTransform(fedinformer.StripUnusedFields)
-	_ = memClusterInformer.SetTransform(fedinformer.StripUnusedFields)
+	//_ = memClusterInformer.SetTransform(fedinformer.StripUnusedFields)
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -92,46 +97,68 @@ func (s *Scheduler) resourceBindingEventFilter(obj interface{}) bool {
 }
 
 func (s *Scheduler) onResourceBindingAdd(obj interface{}) {
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		klog.Errorf("couldn't get key for object %#v: %v", obj, err)
+	var binding *framework.BindingInfo
+	switch t := obj.(type) {
+	case *workv1alpha2.ResourceBinding:
+		binding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	case *workv1alpha2.ClusterResourceBinding:
+		binding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	default:
+		klog.Infof("XXXXXXXXXXX, just for test.")
+	}
+	klog.Infof("Succeed to add binding(%s/%s) to the scheduling queue", binding.Namespace, binding.Name)
+
+	if err := s.schedulingQueue.Add(binding); err != nil {
+		klog.Errorf("failed to add binding into the scheduling queue, err: %w", err)
 		return
 	}
-
-	s.queue.Add(key)
 	metrics.CountSchedulerBindings(metrics.BindingAdd)
 }
 
 func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
-	key, err := cache.MetaNamespaceKeyFunc(cur)
-	if err != nil {
-		klog.Errorf("couldn't get key for object %#v: %v", cur, err)
+	var oldBinding, newBinding *framework.BindingInfo
+	switch t := old.(type) {
+	case *workv1alpha2.ResourceBinding:
+		oldBinding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	case *workv1alpha2.ClusterResourceBinding:
+		oldBinding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	default:
+		klog.Infof("XXXXXXXXXXX, just for test.")
+	}
+	switch t := cur.(type) {
+	case *workv1alpha2.ResourceBinding:
+		newBinding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	case *workv1alpha2.ClusterResourceBinding:
+		newBinding = &framework.BindingInfo{ObjectMeta: t.ObjectMeta, ResourceBindingSpec: t.Spec}
+	default:
+		klog.Infof("XXXXXXXXXXX, just for test.")
+	}
+	klog.Infof("Succeed to update binding(%s/%s) to the scheduling queue", newBinding.Namespace, newBinding.Name)
+
+	if err := s.schedulingQueue.Update(oldBinding, newBinding); err != nil {
+		klog.Errorf("failed to update binding in the scheduling queue, err: %w", err)
 		return
 	}
-
-	s.queue.Add(key)
 	metrics.CountSchedulerBindings(metrics.BindingUpdate)
 }
 
 func (s *Scheduler) onResourceBindingRequeue(binding *workv1alpha2.ResourceBinding, event string) {
-	key, err := cache.MetaNamespaceKeyFunc(binding)
-	if err != nil {
-		klog.Errorf("couldn't get key for ResourceBinding(%s/%s): %v", binding.Namespace, binding.Name, err)
+	klog.Infof("Requeue ResourceBinding(%s/%s) due to event(%s).", binding.Namespace, binding.Name, event)
+	bInfo := &framework.BindingInfo{ObjectMeta: binding.ObjectMeta, ResourceBindingSpec: binding.Spec}
+	if err := s.schedulingQueue.AddOrMoveUnschedulableBinding(bInfo, event); err != nil {
+		klog.Errorf("failed to add binding into the scheduling queue, err: %w", err)
 		return
 	}
-	klog.Infof("Requeue ResourceBinding(%s/%s) due to event(%s).", binding.Namespace, binding.Name, event)
-	s.queue.Add(key)
 	metrics.CountSchedulerBindings(event)
 }
 
 func (s *Scheduler) onClusterResourceBindingRequeue(clusterResourceBinding *workv1alpha2.ClusterResourceBinding, event string) {
-	key, err := cache.MetaNamespaceKeyFunc(clusterResourceBinding)
-	if err != nil {
-		klog.Errorf("couldn't get key for ClusterResourceBinding(%s): %v", clusterResourceBinding.Name, err)
+	klog.Infof("Requeue ClusterResourceBinding(%s) due to event(%s).", clusterResourceBinding.Name, event)
+	bInfo := &framework.BindingInfo{ObjectMeta: clusterResourceBinding.ObjectMeta, ResourceBindingSpec: clusterResourceBinding.Spec}
+	if err := s.schedulingQueue.AddOrMoveUnschedulableBinding(bInfo, event); err != nil {
+		klog.Errorf("failed to add binding into the scheduling queue, err: %w", err)
 		return
 	}
-	klog.Infof("Requeue ClusterResourceBinding(%s) due to event(%s).", clusterResourceBinding.Name, event)
-	s.queue.Add(key)
 	metrics.CountSchedulerBindings(event)
 }
 
@@ -166,14 +193,18 @@ func (s *Scheduler) updateCluster(oldObj, newObj interface{}) {
 
 	switch {
 	case !equality.Semantic.DeepEqual(oldCluster.Labels, newCluster.Labels):
-		fallthrough
+		s.enqueueAffectedBindings(oldCluster, newCluster, queue.ClusterLabelChanged)
 	case !equality.Semantic.DeepEqual(oldCluster.Spec, newCluster.Spec):
-		s.enqueueAffectedBindings(oldCluster, newCluster)
+		s.enqueueAffectedBindings(oldCluster, newCluster, queue.ClusterFieldChanged)
+	}
+
+	if event := clusterSchedulingPropertiesChange(oldCluster, newCluster); event != "" {
+		s.schedulingQueue.MoveAllToActiveOrBackoffQueue(event, preCheckForCluster(newCluster))
 	}
 }
 
 // enqueueAffectedBinding find all RBs/CRBs related to the cluster and reschedule them
-func (s *Scheduler) enqueueAffectedBindings(oldCluster, newCluster *clusterv1alpha1.Cluster) {
+func (s *Scheduler) enqueueAffectedBindings(oldCluster, newCluster *clusterv1alpha1.Cluster, event string) {
 	bindings, _ := s.bindingLister.List(labels.Everything())
 	for _, binding := range bindings {
 		placementPtr := binding.Spec.Placement
@@ -199,7 +230,7 @@ func (s *Scheduler) enqueueAffectedBindings(oldCluster, newCluster *clusterv1alp
 			fallthrough
 		case util.ClusterMatches(oldCluster, *affinity):
 			// If the old cluster manifest match the affinity, add it to the queue, trigger rescheduling
-			s.onResourceBindingRequeue(binding, metrics.ClusterChanged)
+			s.onResourceBindingRequeue(binding, event)
 		}
 	}
 
@@ -228,7 +259,7 @@ func (s *Scheduler) enqueueAffectedBindings(oldCluster, newCluster *clusterv1alp
 			fallthrough
 		case util.ClusterMatches(oldCluster, *affinity):
 			// If the old cluster manifest match the affinity, add it to the queue, trigger rescheduling
-			s.onClusterResourceBindingRequeue(binding, metrics.ClusterChanged)
+			s.onClusterResourceBindingRequeue(binding, event)
 		}
 	}
 }
@@ -263,4 +294,30 @@ func schedulerNameFilter(schedulerNameFromOptions, schedulerName string) bool {
 	}
 
 	return schedulerNameFromOptions == schedulerName
+}
+
+func clusterSchedulingPropertiesChange(oldCluster, newCluster *clusterv1alpha1.Cluster) string {
+	if !reflect.DeepEqual(oldCluster.Spec.Taints, newCluster.Spec.Taints) {
+		return queue.ClusterTaintsChanged
+	}
+	if !reflect.DeepEqual(oldCluster.Status.APIEnablements, newCluster.Status.APIEnablements) {
+		return queue.ClusterAPIEnablementChanged
+	}
+	if !reflect.DeepEqual(oldCluster.Spec.Region, newCluster.Spec.Region) || !reflect.DeepEqual(oldCluster.Spec.Zone, newCluster.Spec.Zone) ||
+		!reflect.DeepEqual(oldCluster.Spec.Provider, newCluster.Spec.Provider) {
+		return queue.ClusterFieldChanged
+	}
+	if !reflect.DeepEqual(oldCluster.Status.ResourceSummary, newCluster.Status.ResourceSummary) {
+		return queue.ClusterResourceSummaryChanged
+	}
+	return ""
+}
+
+func preCheckForCluster(cluster *clusterv1alpha1.Cluster) queue.PreEnqueueCheck {
+	return func(binfo *framework.BindingInfo) bool {
+		_, isUntolerated := corev1helpers.FindMatchingUntoleratedTaint(cluster.Spec.Taints, binfo.Placement.ClusterTolerations, func(taint *corev1.Taint) bool {
+			return taint.Effect == corev1.TaintEffectNoSchedule
+		})
+		return !isUntolerated
+	}
 }

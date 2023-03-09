@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -37,6 +36,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/scheduler/framework"
 	frameworkplugins "github.com/karmada-io/karmada/pkg/scheduler/framework/plugins"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/runtime"
+	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/helper"
@@ -76,7 +76,8 @@ type Scheduler struct {
 	informerFactory      informerfactory.SharedInformerFactory
 
 	// TODO: implement a priority scheduling queue
-	queue workqueue.RateLimitingInterface
+	//queue workqueue.RateLimitingInterface
+	schedulingQueue internalqueue.SchedulingQueue
 
 	Algorithm      core.ScheduleAlgorithm
 	schedulerCache schedulercache.Cache
@@ -188,7 +189,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 	bindingLister := factory.Work().V1alpha2().ResourceBindings().Lister()
 	clusterBindingLister := factory.Work().V1alpha2().ClusterResourceBindings().Lister()
 	clusterLister := factory.Cluster().V1alpha1().Clusters().Lister()
-	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scheduler-queue")
+	//queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scheduler-queue")
 	schedulerCache := schedulercache.NewCache(clusterLister)
 
 	options := schedulerOptions{}
@@ -201,11 +202,16 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		return nil, err
 	}
 	registry = registry.Filter(options.plugins)
-	algorithm, err := core.NewGenericScheduler(schedulerCache, registry)
+	f, err := runtime.NewFramework(registry)
+	if err != nil {
+		return nil, err
+	}
+	algorithm, err := core.NewGenericScheduler(schedulerCache, f)
 	if err != nil {
 		return nil, err
 	}
 
+	schedulingQueue := internalqueue.NewSchedulingQueue(f.QueueSortFunc())
 	sched := &Scheduler{
 		DynamicClient:        dynamicClient,
 		KarmadaClient:        karmadaClient,
@@ -214,9 +220,10 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		clusterBindingLister: clusterBindingLister,
 		clusterLister:        clusterLister,
 		informerFactory:      factory,
-		queue:                queue,
-		Algorithm:            algorithm,
-		schedulerCache:       schedulerCache,
+		//queue:                queue,
+		schedulingQueue: schedulingQueue,
+		Algorithm:       algorithm,
+		schedulerCache:  schedulerCache,
 	}
 
 	if options.enableSchedulerEstimator {
@@ -247,6 +254,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 	klog.Infof("Starting karmada scheduler")
 	defer klog.Infof("Shutting down karmada scheduler")
 
+	s.schedulingQueue.Run()
 	// Establish all connections first and then begin scheduling.
 	if s.enableSchedulerEstimator {
 		s.establishEstimatorConnections()
@@ -259,6 +267,8 @@ func (s *Scheduler) Run(ctx context.Context) {
 	go wait.Until(s.worker, time.Second, stopCh)
 
 	<-stopCh
+	klog.Infof("XXXXXXXXXXX")
+	s.schedulingQueue.Close()
 }
 
 func (s *Scheduler) worker() {
@@ -267,15 +277,30 @@ func (s *Scheduler) worker() {
 }
 
 func (s *Scheduler) scheduleNext() bool {
-	key, shutdown := s.queue.Get()
-	if shutdown {
-		klog.Errorf("Fail to pop item from queue")
-		return false
-	}
-	defer s.queue.Done(key)
+	//key, shutdown := s.queue.Get()
+	//if shutdown {
+	//	klog.Errorf("Fail to pop item from queue")
+	//	return false
+	//}
+	//defer s.queue.Done(key)
 
-	err := s.doSchedule(key.(string))
-	s.handleErr(err, key)
+	//err := s.doSchedule(key.(string))
+	//s.handleErr(err, key)
+	bindingInfo, err := s.schedulingQueue.Pop()
+	if err != nil {
+		klog.ErrorS(err, "Error while retrieving next binding from scheduling queue")
+		return true
+	}
+
+	key, err := cache.MetaNamespaceKeyFunc(bindingInfo.Binding)
+	klog.Infof("XXXXXXX", key)
+	if err != nil {
+		klog.Errorf("couldn't get key for object %#v: %v", bindingInfo.Binding, err)
+		return true
+	}
+
+	err = s.doSchedule(key)
+	s.handleErr(err, bindingInfo)
 	return true
 }
 
@@ -669,13 +694,16 @@ func (s *Scheduler) patchScheduleResultForClusterResourceBinding(oldBinding *wor
 	return err
 }
 
-func (s *Scheduler) handleErr(err error, key interface{}) {
+func (s *Scheduler) handleErr(err error, binfo *framework.QueuedBindingInfo) {
 	if err == nil || apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
-		s.queue.Forget(key)
+		//s.queue.Forget(key)
 		return
 	}
 
-	s.queue.AddRateLimited(key)
+	//s.queue.AddRateLimited(key)
+	if err := s.schedulingQueue.AddUnschedulableIfNotPresent(binfo, s.schedulingQueue.SchedulingCycle()); err != nil {
+		klog.Errorf("failed to add binding into scheduling queue, err is %w", err)
+	}
 	metrics.CountSchedulerBindings(metrics.ScheduleAttemptFailure)
 }
 

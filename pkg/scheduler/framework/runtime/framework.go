@@ -23,6 +23,7 @@ const (
 // plugins.
 type frameworkImpl struct {
 	scorePluginsWeightMap map[string]int
+	queueSortPlugins      []framework.QueueSortPlugin
 	filterPlugins         []framework.FilterPlugin
 	scorePlugins          []framework.ScorePlugin
 
@@ -54,8 +55,10 @@ func NewFramework(r Registry, opts ...Option) (framework.Framework, error) {
 	f := &frameworkImpl{
 		metricsRecorder: options.metricsRecorder,
 	}
+	queueSortPluginsList := reflect.ValueOf(&f.queueSortPlugins).Elem()
 	filterPluginsList := reflect.ValueOf(&f.filterPlugins).Elem()
 	scorePluginsList := reflect.ValueOf(&f.scorePlugins).Elem()
+	queueSortType := queueSortPluginsList.Type().Elem()
 	filterType := filterPluginsList.Type().Elem()
 	scoreType := scorePluginsList.Type().Elem()
 
@@ -65,11 +68,28 @@ func NewFramework(r Registry, opts ...Option) (framework.Framework, error) {
 			return nil, fmt.Errorf("failed to initialize plugin %q: %w", name, err)
 		}
 
+		addPluginToList(p, queueSortType, &queueSortPluginsList)
 		addPluginToList(p, filterType, &filterPluginsList)
 		addPluginToList(p, scoreType, &scorePluginsList)
 	}
 
 	return f, nil
+}
+
+// QueueSortFunc returns the function to sort bindings in scheduling queue
+func (frw *frameworkImpl) QueueSortFunc() framework.LessFunc {
+	if frw == nil {
+		return func(_, _ *framework.QueuedBindingInfo) bool {
+			return false
+		}
+	}
+
+	if len(frw.queueSortPlugins) == 0 {
+		panic("No QueueSort plugin is registered in the frameworkImpl.")
+	}
+
+	// Only one QueueSort plugin can be enabled.
+	return frw.queueSortPlugins[0].Less
 }
 
 // RunFilterPlugins runs the set of configured Filter plugins for resources on the cluster.
@@ -86,6 +106,7 @@ func (frw *frameworkImpl) RunFilterPlugins(
 	}()
 	for _, p := range frw.filterPlugins {
 		if result := frw.runFilterPlugin(ctx, p, bindingSpec, bindingStatus, cluster); !result.IsSuccess() {
+			result.SetFailedPlugin(p.Name())
 			return result
 		}
 	}

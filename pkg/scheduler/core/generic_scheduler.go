@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"k8s.io/klog/v2"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -13,7 +15,6 @@ import (
 	"github.com/karmada-io/karmada/pkg/scheduler/cache"
 	"github.com/karmada-io/karmada/pkg/scheduler/core/spreadconstraint"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework"
-	"github.com/karmada-io/karmada/pkg/scheduler/framework/runtime"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 )
 
@@ -40,12 +41,8 @@ type genericScheduler struct {
 // NewGenericScheduler creates a genericScheduler object.
 func NewGenericScheduler(
 	schedCache cache.Cache,
-	registry runtime.Registry,
+	f framework.Framework,
 ) (ScheduleAlgorithm, error) {
-	f, err := runtime.NewFramework(registry)
-	if err != nil {
-		return nil, err
-	}
 	return &genericScheduler{
 		schedulerCache:    schedCache,
 		scheduleFramework: f,
@@ -112,7 +109,8 @@ func (g *genericScheduler) findClustersThatFit(
 	defer metrics.ScheduleStep(metrics.ScheduleStepFilter, startTime)
 
 	diagnosis := framework.Diagnosis{
-		ClusterToResultMap: make(framework.ClusterToResultMap),
+		ClusterToResultMap:   make(framework.ClusterToResultMap),
+		UnschedulablePlugins: sets.Set[string]{},
 	}
 
 	var out []*clusterv1alpha1.Cluster
@@ -122,6 +120,7 @@ func (g *genericScheduler) findClustersThatFit(
 		if result := g.scheduleFramework.RunFilterPlugins(ctx, bindingSpec, bindingStatus, c.Cluster()); !result.IsSuccess() {
 			klog.V(4).Infof("Cluster %q is not fit, reason: %v", c.Cluster().Name, result.AsError())
 			diagnosis.ClusterToResultMap[c.Cluster().Name] = result
+			diagnosis.UnschedulablePlugins.Insert(result.FailedPlugin())
 		} else {
 			out = append(out, c.Cluster())
 		}

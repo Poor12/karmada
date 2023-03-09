@@ -22,6 +22,8 @@ const (
 // Framework manages the set of plugins in use by the scheduling framework.
 // Configured plugins are called at specified points in a scheduling context.
 type Framework interface {
+	// QueueSortFunc returns the function to sort bindings in scheduling queue
+	QueueSortFunc() LessFunc
 
 	// RunFilterPlugins runs the set of configured Filter plugins for resources on
 	// the given cluster.
@@ -48,9 +50,10 @@ type FilterPlugin interface {
 // message and (optionally) an error. When the status code is not `Success`,
 // the reasons should explain why.
 type Result struct {
-	code    Code
-	reasons []string
-	err     error
+	code         Code
+	reasons      []string
+	err          error
+	failedPlugin string
 }
 
 // Code is the Status code/type which is returned from plugins.
@@ -122,6 +125,16 @@ func (s *Result) IsSuccess() bool {
 	return s == nil || s.code == Success
 }
 
+// SetFailedPlugin sets the given plugin name to s.failedPlugin.
+func (s *Result) SetFailedPlugin(plugin string) {
+	s.failedPlugin = plugin
+}
+
+// FailedPlugin returns the failed plugin name.
+func (s *Result) FailedPlugin() string {
+	return s.failedPlugin
+}
+
 // AsError returns nil if the Result is a success; otherwise returns an "error" object
 // with a concatenated message on reasons of the Result.
 func (s *Result) AsError() error {
@@ -188,3 +201,13 @@ type ClusterScoreList []ClusterScore
 
 // PluginToClusterScores declares a map from plugin name to its ClusterScoreList.
 type PluginToClusterScores map[string]ClusterScoreList
+
+// LessFunc is the function to sort binding info
+type LessFunc func(bindingInfo1, bindingInfo2 *QueuedBindingInfo) bool
+
+// QueueSortPlugin is an interface that must be implemented by "QueueSort" plugins to
+// determine the order in the scheduling queue.
+type QueueSortPlugin interface {
+	Plugin
+	Less(*QueuedBindingInfo, *QueuedBindingInfo) bool
+}

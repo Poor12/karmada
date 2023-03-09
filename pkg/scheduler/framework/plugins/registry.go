@@ -4,6 +4,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/apienablement"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/clusteraffinity"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/clusterlocality"
+	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/queuesort"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/spreadconstraint"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/plugins/tainttoleration"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/runtime"
@@ -17,5 +18,6 @@ func NewInTreeRegistry() runtime.Registry {
 		clusteraffinity.Name:  clusteraffinity.New,
 		spreadconstraint.Name: spreadconstraint.New,
 		clusterlocality.Name:  clusterlocality.New,
+		queuesort.Name:        queuesort.New,
 	}
 }
