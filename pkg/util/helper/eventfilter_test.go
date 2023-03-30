@@ -1,4 +1,4 @@
-package detector
+package helper
 
 import (
 	"testing"
@@ -10,7 +10,6 @@ import (
 	"k8s.io/utils/pointer"
 
 	workloadv1alpha1 "github.com/karmada-io/karmada/examples/customresourceinterpreter/apis/workload/v1alpha1"
-	"github.com/karmada-io/karmada/pkg/util/helper"
 )
 
 func TestSpecificationChanged(t *testing.T) {
@@ -184,13 +183,13 @@ func TestSpecificationChanged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			unstructuredOldObj, err := helper.ToUnstructured(tt.oldObj)
+			unstructuredOldObj, err := ToUnstructured(tt.oldObj)
 			if err != nil {
 				klog.Errorf("Failed to transform oldObj, error: %v", err)
 				return
 			}
 
-			unstructuredNewObj, err := helper.ToUnstructured(tt.newObj)
+			unstructuredNewObj, err := ToUnstructured(tt.newObj)
 			if err != nil {
 				klog.Errorf("Failed to transform newObj, error: %v", err)
 				return

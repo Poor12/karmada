@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"github.com/karmada-io/karmada/pkg/util/helper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -103,6 +104,23 @@ func (s *Scheduler) onResourceBindingAdd(obj interface{}) {
 }
 
 func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
+	unstructuredOldObj, err := helper.ToUnstructured(old)
+	if err != nil {
+		klog.Errorf("Failed to transform oldObj, error: %v", err)
+		return
+	}
+
+	unstructuredNewObj, err := helper.ToUnstructured(cur)
+	if err != nil {
+		klog.Errorf("Failed to transform newObj, error: %v", err)
+		return
+	}
+
+	if !helper.SpecificationChanged(unstructuredOldObj, unstructuredNewObj) {
+		klog.V(4).Infof("Ignore update event of object (kind=%s, %s/%s) as specification no change", unstructuredOldObj.GetKind(), unstructuredOldObj.GetNamespace(), unstructuredOldObj.GetName())
+		return
+	}
+
 	key, err := cache.MetaNamespaceKeyFunc(cur)
 	if err != nil {
 		klog.Errorf("couldn't get key for object %#v: %v", cur, err)

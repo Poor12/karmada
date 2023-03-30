@@ -296,7 +296,7 @@ func (d *ResourceDetector) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	if !SpecificationChanged(unstructuredOldObj, unstructuredNewObj) {
+	if !helper.SpecificationChanged(unstructuredOldObj, unstructuredNewObj) {
 		klog.V(4).Infof("Ignore update event of object (kind=%s, %s/%s) as specification no change", unstructuredOldObj.GetKind(), unstructuredOldObj.GetNamespace(), unstructuredOldObj.GetName())
 		return
 	}
