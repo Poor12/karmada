@@ -6,9 +6,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
+	"github.com/karmada-io/karmada/pkg/controllers/centralizedhpa/config"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/genericmanager"
@@ -78,6 +80,8 @@ type Options struct {
 	CertRotationRemainingTimeThreshold float64
 	// KarmadaKubeconfigNamespace is the namespace of the secret containing karmada-agent certificate.
 	KarmadaKubeconfigNamespace string
+	// HPAControllerConfiguration is the config of centralizedhpa-controller.
+	HPAControllerConfiguration config.HPAControllerConfiguration
 }
 
 // Context defines the context object for controller.
@@ -87,6 +91,7 @@ type Context struct {
 	Opts                        Options
 	StopChan                    <-chan struct{}
 	DynamicClientSet            dynamic.Interface
+	KubeClientSet               clientset.Interface
 	OverrideManager             overridemanager.OverrideManager
 	ControlPlaneInformerManager genericmanager.SingleClusterInformerManager
 	ResourceInterpreter         resourceinterpreter.ResourceInterpreter

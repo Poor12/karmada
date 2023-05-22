@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	componentbaseconfig "k8s.io/component-base/config"
 
+	"github.com/karmada-io/karmada/pkg/controllers/centralizedhpa/config"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/sharedcli/profileflag"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
@@ -118,8 +119,9 @@ type Options struct {
 	// removal since the workload(resource) has been moved to the graceful eviction tasks.
 	GracefulEvictionTimeout metav1.Duration
 
-	RateLimiterOpts ratelimiterflag.Options
-	ProfileOpts     profileflag.Options
+	RateLimiterOpts            ratelimiterflag.Options
+	ProfileOpts                profileflag.Options
+	HPAControllerConfiguration config.HPAControllerConfiguration
 	// EnableClusterResourceModeling indicates if enable cluster resource modeling.
 	// The resource modeling might be used by the scheduler to make scheduling decisions
 	// in scenario of dynamic replica assignment based on cluster free resources.
@@ -209,5 +211,6 @@ func (o *Options) AddFlags(flags *pflag.FlagSet, allControllers, disabledByDefau
 
 	o.RateLimiterOpts.AddFlags(flags)
 	o.ProfileOpts.AddFlags(flags)
+	o.HPAControllerConfiguration.AddFlags(flags)
 	features.FeatureGate.AddFlag(flags)
 }
